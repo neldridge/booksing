@@ -396,12 +396,6 @@ func NewBookListFromDir(path, coverdir string, verbose bool) (*BookList, error) 
 		return nil, err
 	}
 
-	pdfmatches, err := zglob.Glob(filepath.Join(path, "/**/*.pdf"))
-	if err != nil {
-		return nil, err
-	}
-	matches = append(matches, pdfmatches...)
-
 	var books BookList
 	for i, filename := range matches {
 		if verbose {
