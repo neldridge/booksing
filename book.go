@@ -14,7 +14,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"sort"
 	"strconv"
 	"time"
@@ -89,21 +88,6 @@ func NewBookFromFile(path, coverpath string) (bk *Book, err error) {
 	}
 
 	switch ft := book.FileType; ft {
-	case "pdf":
-		book.Title = filepath.Base(path)
-
-		m, err := GetPDFMeta(path)
-		if err == nil {
-			book.Title = m.Title
-			book.Author.Name = m.Author
-		}
-
-		id := sha1.New()
-		io.WriteString(id, book.Author.Name)
-		book.Author.ID = hex.EncodeToString(id.Sum(nil))[:10]
-		io.WriteString(id, book.Series.Name)
-		io.WriteString(id, book.Title)
-		book.ID = hex.EncodeToString(id.Sum(nil))[:10]
 	case "epub":
 		zr, err := zip.OpenReader(path)
 		if err != nil {
@@ -130,14 +114,14 @@ func NewBookFromFile(path, coverpath string) (bk *Book, err error) {
 			return nil, errors.New("Cannot parse container")
 		}
 
-		rrsk, err := zfs.Open("/" + rootfile)
+		rootReadSeeker, err := zfs.Open("/" + rootfile)
 		if err != nil {
 			return nil, err
 		}
-		defer rrsk.Close()
-		opfdir := filepath.Dir(rootfile)
+		defer rootReadSeeker.Close()
+		opfDir := filepath.Dir(rootfile)
 		opf := etree.NewDocument()
-		_, err = opf.ReadFrom(rrsk)
+		_, err = opf.ReadFrom(rootReadSeeker)
 		if err != nil {
 			return nil, err
 		}
@@ -160,9 +144,9 @@ func NewBookFromFile(path, coverpath string) (bk *Book, err error) {
 		}
 		for _, e := range opf.FindElements("//meta[@name='calibre:series']") {
 			book.Series.Name = e.SelectAttrValue("content", "")
-			seriesid := sha1.New()
-			io.WriteString(seriesid, book.Series.Name)
-			book.Series.ID = hex.EncodeToString(seriesid.Sum(nil))[:10]
+			seriesID := sha1.New()
+			io.WriteString(seriesID, book.Series.Name)
+			book.Series.ID = hex.EncodeToString(seriesID.Sum(nil))[:10]
 			break
 		}
 		for _, e := range opf.FindElements("//meta[@name='calibre:series_index']") {
@@ -186,7 +170,7 @@ func NewBookFromFile(path, coverpath string) (bk *Book, err error) {
 				for _, f := range opf.FindElements("//[@id='" + coverid + "']") {
 					cover := f.SelectAttrValue("href", "")
 					if cover != "" {
-						cr, err := zfs.Open("/" + opfdir + "/" + cover)
+						cr, err := zfs.Open("/" + opfDir + "/" + cover)
 						if err != nil {
 							continue
 						}
@@ -196,7 +180,7 @@ func NewBookFromFile(path, coverpath string) (bk *Book, err error) {
 						if ext == ".jpeg" {
 							ext = ".jpg"
 						}
-						cpath := filepath.Join(coverpath, book.ID+".jpg")
+						cPath := filepath.Join(coverpath, book.ID+".jpg")
 						thumbpath := filepath.Join(coverpath, book.ID+"_thumb"+".jpg")
 
 						var img image.Image
@@ -219,7 +203,7 @@ func NewBookFromFile(path, coverpath string) (bk *Book, err error) {
 							}
 						}
 
-						coverfile, err := os.Create(cpath)
+						coverfile, err := os.Create(cPath)
 						if err != nil {
 							continue
 						}
@@ -432,6 +416,5 @@ func NewBookListFromDir(path, coverdir string, verbose bool) (*BookList, error) 
 		}
 		books = append(books, *book)
 	}
-	debug.FreeOSMemory()
 	return &books, nil
 }
