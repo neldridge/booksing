@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>booksing</title>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="normalize.css">
+    <link rel="stylesheet" href="skeleton.css">
+
+    <!-- Bootstrap CSS -->
+  </head>
+  <body>
+   <form>
+    <div id="app">
+      <div class="row">
+        <div class="six columns">
+          <input v-model="searchstring" class="u-full-width" id="search" placeholder="filter..">
+        </div>
+      </div>
+      <div class="row">
+        <div class="six columns">
+          <table class="u-full-width">
+            <thead>
+              <tr>
+                <th>author</th>
+                <th>title</th>
+                <th>action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="book in books">
+                <td>{{ book.author.name }}</td>
+                <td>{{ book.title }}</td>
+                <td><a class="button button-primary" href="#{{ book.title }}">send</a></td>
+              </tr>
+          </tbody>
+          </table>
+        </div>
+      </div>
+    </div>  
+
+    <!-- Optional JavaScript -->
+  <script src="https://cdn.jsdelivr.net/npm/axios@0.12.0/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lodash@4.13.1/lodash.min.js"></script>
+  <script src="vue.min.js"></script>
+  <script src="smarts.js"></script>
+  </body>
+</html>

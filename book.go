@@ -62,6 +62,7 @@ type Book struct {
 	Author      Author    `json:"author"`
 	Publisher   string    `json:"publisher,omitempty"`
 	Description string    `json:"description,omitempty"`
+	Language    string    `json:"language,omitempty"`
 	Series      Series    `json:"series,omitempty"`
 	Filepath    string    `json:"filepath"`
 	HasCover    bool      `json:"hascover"`
@@ -136,6 +137,10 @@ func NewBookFromFile(path, coverpath string) (bk *Book, err error) {
 		}
 		for _, e := range opf.FindElements("//publisher") {
 			book.Publisher = e.Text()
+			break
+		}
+		for _, e := range opf.FindElements("//language") {
+			book.Language = e.Text()
 			break
 		}
 		for _, e := range opf.FindElements("//description") {
