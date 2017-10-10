@@ -32,7 +32,7 @@
               <tr v-for="book in books">
                 <td>{{ book.author.name }}</td>
                 <td>{{ book.title }}</td>
-                <td><a class="button button-primary" href="#{{ book.title }}">send</a></td>
+                <td><a class="button button-primary" v-on:click.stop="sendBookToKindle(book.id)">send</a></td>
               </tr>
           </tbody>
           </table>

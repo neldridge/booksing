@@ -39,6 +39,19 @@
         // This is the number of milliseconds we wait for the
         // user to stop typing.
         300
-      )
+      ),
+      sendBookToKindle: function (bookid) {
+        axios.post('/convert', {
+            bookid: bookid,
+            email: "gnur@free.kindle.com"
+          })
+          .then(function (response) {
+            console.log(response)
+          })
+          .catch(function (error) {
+            console.log(error)
+          })
+        console.log(event)
+      }
     }
   })

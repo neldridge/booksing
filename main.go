@@ -14,11 +14,45 @@ type bookResponse struct {
 	timestamp time.Time
 }
 
+type bookConvertRequest struct {
+	BookID   string `json:"bookid"`
+	Receiver string `json:"email"`
+}
+
+// BookCache is the evil global var that holds the books...
+var BookCache bookResponse
+
 func main() {
 	BookCache := bookResponse{
 		Books:     &BookList{},
 		timestamp: time.Now().AddDate(0, 0, -1),
 	}
+	http.HandleFunc("/convert", func(w http.ResponseWriter, r *http.Request) {
+		var convert bookConvertRequest
+		if r.Body == nil {
+			http.Error(w, "please provide body", 400)
+			return
+		}
+		err := json.NewDecoder(r.Body).Decode(&convert)
+		if err != nil {
+			http.Error(w, err.Error(), 400)
+			return
+		}
+		var convertBook *Book
+		found := false
+		fmt.Println(convert.BookID)
+		for _, book := range *BookCache.Books {
+			if book.ID == convert.BookID {
+				convertBook = &book
+				found = true
+				break
+			}
+		}
+		if found {
+			go convertAndSendBook(convertBook, convert.Receiver)
+		}
+		fmt.Println(convert.BookID)
+	})
 
 	http.HandleFunc("/books.json", func(w http.ResponseWriter, r *http.Request) {
 		now := time.Now()
@@ -53,4 +87,10 @@ func main() {
 	})
 	http.Handle("/", http.FileServer(assetFS()))
 	log.Fatal(http.ListenAndServe(":7132", nil))
+}
+
+func convertAndSendBook(c *Book, receiver string) {
+	fmt.Println("-----------------------------------")
+	fmt.Println(c)
+	fmt.Println("-----------------------------------")
 }
