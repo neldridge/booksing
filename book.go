@@ -26,11 +26,26 @@ import (
 	"golang.org/x/tools/godoc/vfs/zipfs"
 )
 
-func fix(s string) string {
+func fix(s string, capitalize, correctOrder bool) string {
+	if s == "" {
+		return "Unknown"
+	}
+	if capitalize {
+		s = strings.Title(strings.ToLower(s))
+		s = strings.Replace(s, "'S", "'s", -1)
+	}
+	if correctOrder && strings.Contains(s, ",") {
+		sParts := strings.Split(s, ",")
+		if len(sParts) == 2 {
+			s = strings.TrimSpace(sParts[1]) + " " + strings.TrimSpace(sParts[0])
+		}
+	}
 	return strings.Map(func(in rune) rune {
 		switch in {
 		case '“', '‹', '”', '›':
 			return '"'
+		case '_':
+			return ' '
 		case '‘', '’':
 			return '\''
 		}
@@ -68,6 +83,7 @@ type Book struct {
 	HasCover    bool      `json:"hascover"`
 	ModTime     time.Time `json:"modtime,omitempty"`
 	FileType    string    `json:"filetype,omitempty"`
+	HasMobi     bool      `json:"hasmobi"`
 }
 
 // NewBookFromFile creates a book object from a file
@@ -87,6 +103,10 @@ func NewBookFromFile(path, coverpath string) (bk *Book, err error) {
 	if file, err := os.Stat(path); err == nil {
 		book.ModTime = file.ModTime()
 	}
+
+	mobiPath := strings.Replace(path, "epub", "mobi", -1)
+	_, err = os.Stat(mobiPath)
+	book.HasMobi = !os.IsNotExist(err)
 
 	switch ft := book.FileType; ft {
 	case "epub":
@@ -240,10 +260,10 @@ func NewBookFromFile(path, coverpath string) (bk *Book, err error) {
 		return nil, fmt.Errorf("Unknown filetype: %s", book.FileType)
 	}
 
-	book.Title = fix(book.Title)
-	book.Author.Name = fix(book.Author.Name)
-	book.Description = fix(book.Description)
-	book.Series.Name = fix(book.Series.Name)
+	book.Title = fix(book.Title, true, false)
+	book.Author.Name = fix(book.Author.Name, true, true)
+	book.Description = fix(book.Description, false, false)
+	book.Series.Name = fix(book.Series.Name, true, false)
 
 	return book, nil
 }
@@ -415,5 +435,21 @@ func NewBookListFromDir(path, coverdir string, verbose bool) (*BookList, error) 
 		}
 		books = append(books, *book)
 	}
-	return &books, nil
+	b := books.Sorted(func(a, b Book) bool {
+		aName := a.Author.Name
+		bName := b.Author.Name
+		aParts := strings.Fields(a.Author.Name)
+		bParts := strings.Fields(b.Author.Name)
+		if len(aParts) > 0 {
+			aName = aParts[len(aParts)-1]
+		}
+		if len(bParts) > 0 {
+			bName = bParts[len(bParts)-1]
+		}
+		if aName == bName {
+			return a.Title < b.Title
+		}
+		return aName < bName
+	})
+	return &b, nil
 }

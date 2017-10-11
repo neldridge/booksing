@@ -6,34 +6,24 @@ Heavily inspired by https://github.com/geek1011/BookBrowser/
 
 
 ## Features
+- Easy-to-use
 - Search
-- Advanced Search
     - Search any combination of fields
-    - View all information in the results
 - List view
 - Responsive web interface
-- Browse by:
-    - Author
-- Sorted by:
-    - Last added
-    - Alphabetically
+- Sorted by Author
 - Conversion to mobi with Amazon [kindlegen](https://www.amazon.com/gp/feature.html?docId=1000765211)
-- Easy-to-use
-- Fast
+- Fast (after initial loading of epubs)
 
 ## Requirements
 kindlegen should be in $PATH or location provided with env var $KINDLEGEN_PATH
 
 ## Usage
-Run BookBrowser from the directory with the epub books. By default, you can access the web interface at [http://localhost:8090](http://localhost:8090).
+Run BookBrowser from the directory with the epub books. By default, you can access the web interface at [http://localhost:7132](http://localhost:7132).
 
-You can also use the command line arguments below:
+You can use the following env var to configure where to find all the books:
 
 ````
-  -addr string
-    	The address to bind to. (default ":8090")
-  -bookdir string
+  BOOK_DIR string
     	The directory to get books from. This directory must exist. (default ".")
-  -tempdir string
-    	The directory to use for storing temporary files such as book cover thumbnails. This directory is create on start and deleted on exit. (default is a subdirectory in your system's temp directory)
 ````
