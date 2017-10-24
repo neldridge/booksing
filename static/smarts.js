@@ -7,7 +7,8 @@ Vue.component('modal', {
       smtpserver: localStorage.getItem("smtpserver"),
       smtpuser: localStorage.getItem("smtpuser"),
       smtppass: localStorage.getItem("smtppass"),
-      convert: localStorage.getItem("convert")
+      convert: localStorage.getItem("convert"),
+      resultcount: (localStorage.getItem("resultcount") != null ? localStorage.getItem("resultCount") : 100)
     }
   },
   methods: {
@@ -21,6 +22,7 @@ Vue.component('modal', {
       localStorage.setItem("smtpuser", this.smtpuser)
       localStorage.setItem("smtppass", this.smtppass)
       localStorage.setItem("convert", this.convert)
+      localStorage.setItem("resultcount", this.resultcount)
       
       this.close();
     }
@@ -32,6 +34,7 @@ Vue.component('modal', {
     data: {
       searchstring: "",
       books: [ ],
+      total: 0,
       showModal: false,
       email: "test",
       searchDone: false,
@@ -53,12 +56,14 @@ Vue.component('modal', {
           vm.statusMessage = "getting results"
           axios.get('/books.json', {
             params: {
-              filter: this.searchstring
+              filter: this.searchstring,
+              results: localStorage.getItem("resultcount")
             }
             
           })
             .then(function (response) {
               vm.books = response.data.books;
+              vm.total = response.data.total;
               vm.searchDone = true;
             })
             .catch(function (error) {
@@ -85,7 +90,11 @@ Vue.component('modal', {
       sendBookToKindle: function (bookid) {
         axios.post('/convert', {
             bookid: bookid,
-            email: "gnur@free.kindle.com"
+            email: localStorage.getItem("email"),
+            smtpserver: localStorage.getItem("smtpserver"),
+            smtpuser: localStorage.getItem("smtpuser"),
+            smtppass: localStorage.getItem("smtppass"),
+            convert: (localStorage.getItem("convert") == "true"),
           })
           .then(function (response) {
             console.log(response)
