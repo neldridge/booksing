@@ -39,6 +39,10 @@
                       <input class="form-control" type="password" v-model="smtppass">
                   </label>
                   <label class="form-label">
+                      number of results per page
+                      <input class="form-control" type="number" v-model="resultcount">
+                  </label>
+                  <label class="form-label">
                       <input class="toggle" type="checkbox" v-model="convert">
                       convert to mobi
                   </label>
@@ -62,7 +66,7 @@
         <a class="button" v-on:click.stop="refreshBooklist">{{ refreshButtonText }}</a>
         <a class="button" @click="showModal = true">configure</a>
         <div v-if="searchDone">
-          {{ books.length }} resultaten
+          {{ total }} results <span v-if="total != books.length">({{ books.length }} shown)</span>
         </div>
         <div v-else>
           {{ statusMessage }}
