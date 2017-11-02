@@ -168,6 +168,7 @@ func convertAndSendBook(c *Book, req bookConvertRequest) {
 // NewBookListFromDir creates a BookList from the books in a dir. It will still return a nil error if there are errors indexing some of the books. It will only return an error if there is a problem getting the file list.
 func NewBookListFromDir(path string, verbose bool) (*BookList, error) {
 	matches, err := zglob.Glob(filepath.Join(path, "/**/*.epub"))
+	ids := make(map[string]bool)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +185,12 @@ func NewBookListFromDir(path string, verbose bool) (*BookList, error) {
 			}
 			continue
 		}
-		books = append(books, *book)
+		if _, ok := ids[book.ID]; !ok {
+			books = append(books, *book)
+			ids[book.ID] = true
+		} else {
+			fmt.Println(filename, "is a duplicate")
+		}
 	}
 	b := books.Sorted(func(a, b Book) bool {
 		aName := a.Author.Name
