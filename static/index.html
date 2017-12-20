@@ -66,7 +66,7 @@
         <a class="button" v-on:click.stop="refreshBooklist">{{ refreshButtonText }}</a>
         <a class="button" @click="showModal = true">configure</a>
         <div v-if="searchDone">
-          {{ total }} results <span v-if="total != books.length">({{ books.length }} shown)</span>
+          {{ books.length }} results <span v-if="total != books.length">({{ total }} books searched)</span>
         </div>
         <div v-else>
           {{ statusMessage }}
@@ -74,6 +74,7 @@
       </div>
     </form>
   </div>
+  <div class="row" v-if="descriptionVisible" @click="descriptionVisible = false"><pre>{{description}}</pre></div>
     <div class="row" v-if="searchDone">
       <div class="seven columns">
         <table class="u-full-width">
@@ -82,18 +83,24 @@
               <th>author</th>
               <th>title</th>
               <th>action</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="book in books">
-              <td>{{ book.author.name }}</td>
+            <template v-for="book in books">
+            <tr>
+              <td>{{ book.author }}</td>
               <td>{{ book.title }} </td>
               <td>
                 <a class="button button-primary" v-on:click.stop="sendBookToKindle(book.id)">send
                 <span v-if="book.hasmobi">✓</span>
                 <span v-else>✗</span></a>
               </td>
+              <td>
+                <a class="button button-primary" v-on:click.stop="showDescription(book)" v-if="book.description != 'Unknown'">description</a>
+              </td>
             </tr>
+            </template>
           </tbody>
         </table>
       </div>

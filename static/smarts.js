@@ -36,6 +36,8 @@ Vue.component('modal', {
       books: [ ],
       total: 0,
       showModal: false,
+      descriptionVisible: false,
+      description: "",
       email: "test",
       searchDone: false,
       statusMessage: "please enter your query",
@@ -72,7 +74,7 @@ Vue.component('modal', {
         },
         // This is the number of milliseconds we wait for the
         // user to stop typing.
-        100
+        500
       ),
       refreshBooklist: function() {
         var vm = this
@@ -86,6 +88,11 @@ Vue.component('modal', {
               vm.refreshButtonText = "refresh"
             })
 
+      },
+      showDescription: function (book) {
+        var vm = this;
+        vm.description = book.description;
+        vm.descriptionVisible = true;
       },
       sendBookToKindle: function (bookid) {
         axios.post('/convert', {

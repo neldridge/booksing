@@ -8,18 +8,22 @@ import (
 	"net/smtp"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/asdine/storm"
+	"github.com/asdine/storm/codec/msgpack"
+	"github.com/asdine/storm/q"
 	"github.com/jordan-wright/email"
 	zglob "github.com/mattn/go-zglob"
 )
 
 type bookResponse struct {
-	Books      *BookList `json:"books"`
-	TotalCount int       `json:"total"`
+	Books      []Book `json:"books"`
+	TotalCount int    `json:"total"`
 	timestamp  time.Time
 }
 
@@ -36,14 +40,24 @@ type bookConvertRequest struct {
 var BookCache bookResponse
 
 func main() {
-	BookCache := bookResponse{
-		Books:     &BookList{},
-		timestamp: time.Now().AddDate(0, 0, -1),
-	}
+	envDeletes := os.Getenv("ALLOW_DELETES")
+	allowDeletes := envDeletes != "" && strings.ToLower(envDeletes) == "true"
 	bookDir := os.Getenv("BOOK_DIR")
 	if bookDir == "" {
 		bookDir = "."
 	}
+
+	dbLocation := os.Getenv("DATABASE_LOCATION")
+	if dbLocation == "" {
+		dbLocation = filepath.Join(bookDir, "booksing.db")
+	}
+	db, err := storm.Open(dbLocation, storm.Codec(msgpack.Codec), storm.Batch())
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	defer db.Close()
+
 	http.HandleFunc("/convert", func(w http.ResponseWriter, r *http.Request) {
 		var convert bookConvertRequest
 		if r.Body == nil {
@@ -55,66 +69,19 @@ func main() {
 			http.Error(w, err.Error(), 400)
 			return
 		}
-		var convertBook *Book
-		found := false
-		fmt.Println(convert.BookID)
-		for _, book := range *BookCache.Books {
-			if book.ID == convert.BookID {
-				convertBook = &book
-				found = true
-				break
-			}
-		}
-		if found {
-			go convertAndSendBook(convertBook, convert)
+		var convertBook Book
+		err = db.One("ID", convert.BookID, &convertBook)
+		if err == nil {
+			go convertAndSendBook(&convertBook, convert)
+		} else {
+			fmt.Println(err.Error())
 		}
 		fmt.Println(convert.BookID)
 	})
-	http.HandleFunc("/refresh", func(w http.ResponseWriter, r *http.Request) {
-		now := time.Now()
-		ts := BookCache.timestamp
-		if now.After(ts.Add(30 * time.Second)) {
-			log.Printf("Refreshing cache...")
-			a, err := NewBookListFromDir(bookDir, false)
-			if err != nil {
-				fmt.Println(err)
-			} else {
-				BookCache.timestamp = time.Now()
-				BookCache.Books = a
-			}
-			log.Printf("Cache refreshed!")
-		}
-	})
+	http.HandleFunc("/refresh", refreshBooks(db, bookDir, allowDeletes))
+	http.HandleFunc("/books.json", getBooks(db))
+	http.HandleFunc("/download/", getBook(db))
 
-	http.HandleFunc("/books.json", func(w http.ResponseWriter, r *http.Request) {
-
-		resp := bookResponse{Books: BookCache.Books}
-		q := strings.ToLower(r.URL.Query().Get("filter"))
-		if q != "" {
-			filteredList := BookCache.Books.Filtered(func(b Book) bool {
-				if strings.Contains(strings.ToLower(b.Author.Name), q) {
-					return true
-				}
-				if strings.Contains(strings.ToLower(b.Title), q) {
-					return true
-				}
-				return false
-			})
-			resp.Books = filteredList
-
-		}
-		resp.TotalCount = len(*resp.Books)
-		numString := r.URL.Query().Get("results")
-		if a, err := strconv.Atoi(numString); err == nil {
-			if a < len(*resp.Books) {
-				resp.TotalCount = len(*resp.Books)
-				shortedResults := *resp.Books
-				shortedResults = shortedResults[:a]
-				resp.Books = &shortedResults
-			}
-		}
-		json.NewEncoder(w).Encode(resp)
-	})
 	http.Handle("/", http.FileServer(assetFS()))
 	log.Fatal(http.ListenAndServe(":7132", nil))
 }
@@ -164,49 +131,122 @@ func convertAndSendBook(c *Book, req bookConvertRequest) {
 	fmt.Println(c)
 	fmt.Println("-----------------------------------")
 }
-
-// NewBookListFromDir creates a BookList from the books in a dir. It will still return a nil error if there are errors indexing some of the books. It will only return an error if there is a problem getting the file list.
-func NewBookListFromDir(path string, verbose bool) (*BookList, error) {
-	matches, err := zglob.Glob(filepath.Join(path, "/**/*.epub"))
-	ids := make(map[string]bool)
-	if err != nil {
-		return nil, err
+func getBook(db *storm.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		bookId := r.URL.Query().Get("bookid")
+		var book Book
+		err := db.One("ID", bookId, &book)
+		if err != nil {
+			return
+		}
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", path.Base(book.Filepath)))
+		http.ServeFile(w, r, book.Filepath)
 	}
+}
 
-	var books BookList
-	for i, filename := range matches {
-		if verbose {
-			log.Printf("%.f%% Indexing %s\n", float64(i+1)/float64(len(matches))*100, filename)
+func getBooks(db *storm.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// do stuff with db here
+		var resp bookResponse
+		var book Book
+		var books []Book
+		var limit int
+		numString := r.URL.Query().Get("results")
+		filter := strings.ToLower(r.URL.Query().Get("filter"))
+		limit = 1000
+		if a, err := strconv.Atoi(numString); err == nil {
+			if a > 0 && a < 1000 {
+				limit = a
+			}
+		}
+		numResults, err := db.Count(&book)
+		if err != nil {
+			fmt.Println(err)
+		}
+		resp.TotalCount = numResults
+
+		if filter == "" {
+			err := db.All(&books, storm.Limit(limit))
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+		} else {
+			filter = "(?i)" + filter
+			query := db.Select(q.Or(
+				q.Re("Author", filter),
+				q.Re("Title", filter),
+			)).Limit(limit).OrderBy("Author")
+			query.Find(&books)
+		}
+		resp.Books = books
+		if len(resp.Books) == 0 {
+			resp.Books = []Book{}
+		}
+
+		json.NewEncoder(w).Encode(resp)
+	}
+}
+
+func refreshBooks(db *storm.DB, bookDir string, allowDeletes bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Println("starting refresh of booklist")
+		db.Set("status", "current", "indexing books")
+		matches, err := zglob.Glob(filepath.Join(bookDir, "/**/*.epub"))
+		if err != nil {
+			fmt.Println("Scan could not complete: ", err.Error())
+			return
+		}
+
+		bookQ := make(chan string, len(matches))
+		resultQ := make(chan int)
+
+		for w := 0; w < 5; w++ {
+			go bookParser(db, bookQ, resultQ, allowDeletes)
+		}
+
+		for _, filename := range matches {
+			bookQ <- filename
+		}
+
+		for a := 0; a < len(matches); a++ {
+			<-resultQ
+			if a > 0 && a%100 == 0 {
+				fmt.Println("Scraped", a, "books so far")
+			}
+		}
+
+		db.Set("status", "current", "idle")
+		log.Println("started refresh of booklist")
+	}
+}
+
+func bookParser(db *storm.DB, bookQ chan string, resultQ chan int, allowDeletes bool) {
+	for filename := range bookQ {
+		var dbBook Book
+		err := db.One("Filepath", filename, &dbBook)
+		if err == nil {
+			resultQ <- 1
+			continue
 		}
 		book, err := NewBookFromFile(filename)
 		if err != nil {
-			if verbose {
-				log.Printf("Error indexing %s: %s\n", filename, err)
+			if allowDeletes {
+				fmt.Println("Deleting ", filename)
+				os.Remove(filename)
 			}
+			resultQ <- 1
 			continue
 		}
-		if _, ok := ids[book.ID]; !ok {
-			books = append(books, *book)
-			ids[book.ID] = true
-		} else {
-			fmt.Println(filename, "is a duplicate")
+		err = db.One("ID", book.ID, &dbBook)
+		if err == storm.ErrNotFound {
+			err = db.Save(book)
+			if err != nil {
+				fmt.Println(err)
+			}
+		} else if allowDeletes {
+			fmt.Println("Deleting ", filename)
+			os.Remove(filename)
 		}
+		resultQ <- 1
 	}
-	b := books.Sorted(func(a, b Book) bool {
-		aName := a.Author.Name
-		bName := b.Author.Name
-		aParts := strings.Fields(a.Author.Name)
-		bParts := strings.Fields(b.Author.Name)
-		if len(aParts) > 0 {
-			aName = aParts[len(aParts)-1]
-		}
-		if len(bParts) > 0 {
-			bName = bParts[len(bParts)-1]
-		}
-		if aName == bName {
-			return a.Title < b.Title
-		}
-		return aName < bName
-	})
-	return &b, nil
 }
