@@ -32,6 +32,12 @@
   revision = "1e59b77b52bf8e4b449a57e6f79f21226d571845"
 
 [[projects]]
+  name = "github.com/google/uuid"
+  packages = ["."]
+  revision = "064e2069ce9c359c118179501254f67d7d37ba24"
+  version = "0.2"
+
+[[projects]]
   name = "github.com/jordan-wright/email"
   packages = ["."]
   revision = "a62870b0c368c3c29de27027be67d855e308cc37"
@@ -47,7 +53,7 @@
   branch = "master"
   name = "github.com/mattn/go-zglob"
   packages = [".","fastwalk"]
-  revision = "4b74c24375b3b1ee226867156e01996f4e19a8d6"
+  revision = "cb5263554791976bf8cdd747c82355370893ecd7"
 
 [[projects]]
   name = "github.com/vmihailenco/msgpack"
@@ -65,13 +71,13 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "571f7bbbe08da2a8955aed9d4db316e78630e9a3"
+  revision = "83801418e1b59fb1880e363299581ee543af32ca"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/tools"
   packages = ["godoc/vfs","godoc/vfs/zipfs"]
-  revision = "ae8cc594552814363a7aeeb4f2825515a771fa38"
+  revision = "f271d7a0f8cf389f3ee4f6bf8d68e716a60ea571"
 
 [[projects]]
   name = "google.golang.org/appengine"
@@ -82,6 +88,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "9e20472e81d727d12627a119065d7522af798ebce85313cd26d787dc21fa831e"
+  inputs-digest = "ab51a91219df8dacf618cdf4c3934d7b4a000da4350f3544b1ff0f9cc31f0b4f"
   solver-name = "gps-cdcl"
   solver-version = 1
