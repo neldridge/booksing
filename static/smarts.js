@@ -7,8 +7,10 @@ Vue.component('modal', {
       smtpserver: localStorage.getItem("smtpserver"),
       smtpuser: localStorage.getItem("smtpuser"),
       smtppass: localStorage.getItem("smtppass"),
-      convert: localStorage.getItem("convert"),
-      resultcount: (localStorage.getItem("resultcount") != null ? localStorage.getItem("resultCount") : 100)
+      convert: localStorage.getItem("convert") == "true",
+      enableSend: localStorage.getItem("enablesend") =="true",
+      token: localStorage.getItem("token") == null ? "" : localStorage.getItem("token"),
+      resultcount: 50
     }
   },
   methods: {
@@ -22,11 +24,13 @@ Vue.component('modal', {
       localStorage.setItem("smtpuser", this.smtpuser)
       localStorage.setItem("smtppass", this.smtppass)
       localStorage.setItem("convert", this.convert)
+      localStorage.setItem("enablesend", this.enableSend)
+      localStorage.setItem("token", this.token)
       localStorage.setItem("resultcount", this.resultcount)
-      
+      document.cookie = "token=" + this.token
       this.close();
     }
-  }
+}
 });
 
   var watchExampleVM = new Vue({
@@ -35,6 +39,7 @@ Vue.component('modal', {
       searchstring: "",
       books: [ ],
       total: 0,
+      enableSend: localStorage.getItem("enablesend") == "true",
       showModal: false,
       descriptionVisible: false,
       description: "",
@@ -49,12 +54,17 @@ Vue.component('modal', {
         this.getBooks()
       }
     },
+    mounted: function () {
+      document.cookie = "token=" + localStorage.getItem("token")
+    },
+
     methods: {
       // _.debounce is a function provided by lodash to limit how
       // often a particularly expensive operation can be run.
       getBooks: _.debounce(
         function () {
           var vm = this
+          vm.searchDone = false;
           vm.statusMessage = "getting results"
           axios.get('/books.json', {
             params: {
@@ -69,7 +79,7 @@ Vue.component('modal', {
               vm.searchDone = true;
             })
             .catch(function (error) {
-              vm.answer = 'Error! Could not reach the API. ' + error
+              vm.statusMessage = "click configure and save your token"
             })
         },
         // This is the number of milliseconds we wait for the
@@ -111,5 +121,5 @@ Vue.component('modal', {
           })
         console.log(event)
       }
-    }
-  })
+   }
+})

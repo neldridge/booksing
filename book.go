@@ -53,6 +53,7 @@ type Book struct {
 	Author      string `json:"author" storm:"index"`
 	Description string `json:"description,omitempty"`
 	Filepath    string `json:"filepath" storm:"index"`
+	Filename    string `json:"filename" storm:"index"`
 	HasMobi     bool   `json:"hasmobi"`
 	LastSeen    int64  `storm:"index"`
 }
@@ -69,6 +70,7 @@ func NewBookFromFile(path string) (bk *Book, err error) {
 	book := new(Book)
 	book.LastSeen = time.Now().UnixNano()
 	book.Title = filepath.Base(path)
+	book.Filename = filepath.Base(path)
 	book.Filepath = path
 
 	mobiPath := strings.Replace(path, "epub", "mobi", -1)

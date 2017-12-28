@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/smtp"
@@ -17,6 +18,7 @@ import (
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/codec/msgpack"
 	"github.com/asdine/storm/q"
+	"github.com/google/uuid"
 	"github.com/jordan-wright/email"
 	zglob "github.com/mattn/go-zglob"
 )
@@ -36,8 +38,11 @@ type bookConvertRequest struct {
 	ConvertToMobi bool   `json:"convert"`
 }
 
-// BookCache is the evil global var that holds the books...
-var BookCache bookResponse
+// User represents a user..
+type User struct {
+	Name  string `storm:"id"`
+	Token string
+}
 
 func main() {
 	envDeletes := os.Getenv("ALLOW_DELETES")
@@ -80,6 +85,7 @@ func main() {
 	})
 	http.HandleFunc("/refresh", refreshBooks(db, bookDir, allowDeletes))
 	http.HandleFunc("/books.json", getBooks(db))
+	http.HandleFunc("/adduser", addUser(db))
 	http.HandleFunc("/download/", getBook(db))
 
 	http.Handle("/", http.FileServer(assetFS()))
@@ -133,9 +139,16 @@ func convertAndSendBook(c *Book, req bookConvertRequest) {
 }
 func getBook(db *storm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		bookId := r.URL.Query().Get("bookid")
+		c, err := r.Cookie("token")
+		if err != nil || !validToken(db, c.Value) {
+			http.Error(w, "denied", http.StatusForbidden)
+			return
+		}
+		fileName := r.URL.Query().Get("book")
+		fmt.Println(c.Value)
+		fmt.Println("trying to download ", fileName)
 		var book Book
-		err := db.One("ID", bookId, &book)
+		err = db.One("Filename", fileName, &book)
 		if err != nil {
 			return
 		}
@@ -144,9 +157,49 @@ func getBook(db *storm.DB) http.HandlerFunc {
 	}
 }
 
+func validToken(db *storm.DB, cookie string) bool {
+	if os.Getenv("TOKEN_REQUIRED") != "true" {
+		return true
+	}
+	parts := strings.SplitN(cookie, "_", 2)
+	if len(parts) != 2 {
+		return false
+	}
+	var user User
+	err := db.One("Name", parts[0], &user)
+	if err != nil {
+		return false
+	}
+	return parts[1] == user.Token
+}
+
+func addUser(db *storm.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		username := r.URL.Query().Get("username")
+		if username == "" {
+			http.Error(w, "please provide username", http.StatusNotFound)
+			return
+		}
+		token := uuid.New().String()
+		var user User
+		user.Name = username
+		user.Token = token
+		err := db.Save(&user)
+		if err != nil {
+			http.Error(w, "unknown error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		io.WriteString(w, fmt.Sprintf("%s_%s\n", username, token))
+	}
+}
+
 func getBooks(db *storm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// do stuff with db here
+		c, err := r.Cookie("token")
+		if err != nil || !validToken(db, c.Value) {
+			http.Error(w, "denied", http.StatusForbidden)
+			return
+		}
 		var resp bookResponse
 		var book Book
 		var books []Book

@@ -23,18 +23,22 @@
               </div>
               <div class="modal-body">
                   <label class="form-label">
+                      token:
+                      <input class="form-control" v-model="token">
+                  </label>
+                  <label class="form-label" v-if="enableSend">
                       email address:
                       <input class="form-control" v-model="email">
                   </label>
-                  <label class="form-label">
+                  <label class="form-label" v-if="enableSend">
                       mail server smtp address
                       <input class="form-control" v-model="smtpserver">
                   </label>
-                  <label class="form-label">
+                  <label class="form-label" v-if="enableSend">
                       mail server username
                       <input class="form-control" v-model="smtpuser">
                   </label>
-                  <label class="form-label">
+                  <label class="form-label" v-if="enableSend">
                       mail server password
                       <input class="form-control" type="password" v-model="smtppass">
                   </label>
@@ -45,6 +49,10 @@
                   <label class="form-label">
                       <input class="toggle" type="checkbox" v-model="convert">
                       convert to mobi
+                  </label>
+                  <label class="form-label">
+                      <input class="toggle" type="checkbox" v-model="enableSend">
+                      show send button
                   </label>
               </div>
               <div class="modal-footer text-right">
@@ -60,9 +68,9 @@
 <div id="app" class="container">
     <modal :show="showModal" @close="showModal = false"></modal>
   <div class="row">
-    <form>
-      <div class="eight columns">
-        <input v-model="searchstring" id="search" placeholder="filter.." type="text">
+    <form action="javascript:void()" onsubmit="return false">
+      <div class="nine columns">
+        <input v-model="searchstring" id="search" placeholder="type here to search" type="text">
         <a class="button" v-on:click.stop="refreshBooklist">{{ refreshButtonText }}</a>
         <a class="button" @click="showModal = true">configure</a>
         <div v-if="searchDone">
@@ -76,13 +84,14 @@
   </div>
   <div class="row" v-if="descriptionVisible" @click="descriptionVisible = false"><pre>{{description}}</pre></div>
     <div class="row" v-if="searchDone">
-      <div class="seven columns">
+      <div class="nine columns">
         <table class="u-full-width">
           <thead>
             <tr>
               <th>author</th>
               <th>title</th>
-              <th>action</th>
+              <th v-if="enableSend">action</th>
+              <th></th>
               <th></th>
             </tr>
           </thead>
@@ -91,13 +100,16 @@
             <tr>
               <td>{{ book.author }}</td>
               <td>{{ book.title }} </td>
-              <td>
+              <td v-if="enableSend">
                 <a class="button button-primary" v-on:click.stop="sendBookToKindle(book.id)">send
                 <span v-if="book.hasmobi">✓</span>
                 <span v-else>✗</span></a>
               </td>
               <td>
                 <a class="button button-primary" v-on:click.stop="showDescription(book)" v-if="book.description != 'Unknown'">description</a>
+              </td>
+              <td>
+                <a class="button button-primary" :href="'/download/?book=' + book.filename">download</a>
               </td>
             </tr>
             </template>
