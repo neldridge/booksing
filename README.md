@@ -3,6 +3,12 @@ A tool to browse epubs and convert them to mobi ebooks using kindlegen.
 
 Heavily inspired by https://github.com/geek1011/BookBrowser/
 
+Build status: 
+[![CircleCI](https://circleci.com/gh/gnur/booksing.svg?style=svg)](https://circleci.com/gh/gnur/booksing)
+
+## installation
+Download an appropriate release from the [release](https://github.com/gnur/booksing/releases) page
+
 
 ## Features
 - Easy-to-use
