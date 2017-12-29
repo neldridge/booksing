@@ -18,9 +18,10 @@ jobs:
     working_directory: /go/src/github.com/gnur/booksing
     steps:
       - checkout
-      - attach_workspace:
-          at: ~/dist/
       - run: ./build.sh release
+      - persist_to_workspace:
+          root: ~/dist/
+          paths: booksing-*
   release:
     docker:
       # specify the version
