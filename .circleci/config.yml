@@ -1,17 +1,3 @@
-dependencies:
-  pre:
-    - go get github.com/tcnksm/ghr
-
-compile:
-  override:
-    - ./build.sh release
-
-deployment:
-  release:
-    tag: /v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)/
-    commands:
-      - ghr -t $GITHUB_TOKEN -u $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME --replace `git describe --tags` output/
-
 # Golang CircleCI 2.0 configuration file
 #
 # Check https://circleci.com/docs/2.0/language-go/ for more details
