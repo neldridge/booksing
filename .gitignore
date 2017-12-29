@@ -2,3 +2,4 @@ build
 .vscode
 bindata_assetfs
 booksing
+dist/*
