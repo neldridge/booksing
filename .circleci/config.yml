@@ -10,7 +10,7 @@ jobs:
     working_directory: /go/src/github.com/gnur/booksing
     steps:
       - checkout
-      - run: ./build.sh
+      - run: ./build.sh test
   build:
     docker:
       # specify the version
@@ -42,6 +42,9 @@ workflows:
       - build:
           requires:
             - test
+          filters:
+            tags:
+              only: /v(.*)/
       - release:
           requires:
             - build
