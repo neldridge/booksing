@@ -3,6 +3,14 @@
 # Check https://circleci.com/docs/2.0/language-go/ for more details
 version: 2
 jobs:
+  test:
+    docker:
+      # specify the version
+      - image: circleci/golang:1.9
+    working_directory: /go/src/github.com/gnur/booksing
+    steps:
+      - checkout
+      - run: ./build.sh
   build:
     docker:
       # specify the version
@@ -10,6 +18,30 @@ jobs:
     working_directory: /go/src/github.com/gnur/booksing
     steps:
       - checkout
-      - run: go get github.com/tcnksm/ghr
+      - attach_workspace:
+          at: ~/dist/
       - run: ./build.sh release
-      - run: find .
+  release:
+    docker:
+      # specify the version
+      - image: circleci/golang:1.9
+    working_directory: /go/src/github.com/gnur/booksing
+    steps:
+      - attach_workspace:
+          at: ~/dist/
+      - run: go get github.com/tcnksm/ghr
+      - run: ghr -u gnur -r booksing $CIRCLE_TAG ~/dist/
+
+
+
+workflows:
+  version: 2
+  build-deploy:
+    jobs:
+      - test
+      - release:
+          requires:
+            - build
+          filters:
+            tags:
+              only: /v(.*)/
