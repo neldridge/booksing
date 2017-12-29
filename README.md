@@ -31,7 +31,7 @@ Only if you want to convert your epubs for kindle reading
 - ebook-convert should be in $PATH (usually automatically installed when installing calibre)
 
 ## Usage
-1. Run BookBrowser from the directory with the epub books. You can access the web interface at [http://localhost:7132](http://localhost:7132) 
+1. Run the booksing binary from the directory with the epub books. You can access the web interface at [http://localhost:7132](http://localhost:7132) 
 1. Press refresh to search for books
 1. Configure your smtp server, username and password. When using gmail / g suite, smtp server is smtp.gmail.com, username is your e-mail address and your regular account password (if you have 2FA enabled, please generate an application specific password) 
 1. If you have a kindle, check the convert to mobi checkbox and enter your kindles email address (can be found on your amazon "devices" page) 
