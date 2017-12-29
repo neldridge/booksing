@@ -175,6 +175,11 @@ func validToken(db *storm.DB, cookie string) bool {
 
 func addUser(db *storm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		addr := strings.Split(r.RemoteAddr, ":")[0]
+		if addr != "127.0.0.1" {
+			http.Error(w, "denied", http.StatusForbidden)
+			return
+		}
 		username := r.URL.Query().Get("username")
 		if username == "" {
 			http.Error(w, "please provide username", http.StatusNotFound)
