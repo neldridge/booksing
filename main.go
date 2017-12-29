@@ -89,6 +89,7 @@ func main() {
 	http.HandleFunc("/download/", getBook(db))
 
 	http.Handle("/", http.FileServer(assetFS()))
+	fmt.Println("Please visit http://localhost:7132 to view booksing")
 	log.Fatal(http.ListenAndServe(":7132", nil))
 }
 
