@@ -10,4 +10,6 @@ cd /go/src/github.com/gnur/${PROJECT}/
 
 export CGO_ENABLED=0
 export GOOS=linux
+
+cp -a /src/.oawm /dist/
 go build -a -installsuffix cgo -o /dist/app .
