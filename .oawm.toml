@@ -1,0 +1,14 @@
+Gitrepo = "git@github.com:gnur/booksing.git"
+
+[Docker]
+buildfile = "Dockerfile"
+repository = "r.erwin.land/gnur/booksing"
+
+[Stages]
+[Stages.prep]
+Image = "golang:1.10-alpine"
+Script = ".oawm/prep.sh"
+
+[Stages.build]
+Image = "golang:1.10-alpine"
+Script = ".oawm/build.sh"
