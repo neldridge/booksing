@@ -1,5 +1,5 @@
 [Docker]
-buildfile = "Dockerfile"
+buildfile = "/dist/.oawm/Dockerfile"
 repository = "r.erwin.land/gnur/booksing"
 
 [Stages]
