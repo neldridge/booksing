@@ -1,12 +1,14 @@
-[Docker]
+[docker]
 buildfile = "/dist/.oawm/Dockerfile"
 repository = "r.erwin.land/gnur/booksing"
 
-[Stages]
-[Stages.prep]
-Image = "golang:1.10-alpine"
-Script = "/src/.oawm/prep.sh"
 
-[Stages.build]
-Image = "golang:1.10-alpine"
-Script = "/src/.oawm/build.sh"
+[[stages]]
+name = "prep"
+image = "golang:1.10-alpine"
+script = "/src/.oawm/prep.sh"
+
+[[stages]]
+name = "build"
+image = "golang:1.10-alpine"
+script = "/src/.oawm/build.sh"
