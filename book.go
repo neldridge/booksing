@@ -52,7 +52,7 @@ type Book struct {
 	Hash          string
 	Title         string   `json:"title"`
 	Author        string   `json:"author"`
-	Description   string   `json:"description`
+	Description   string   `json:"description"`
 	Filepath      string   `json:"filepath"`
 	Filename      string   `json:"filename"`
 	HasMobi       bool     `json:"hasmobi"`
