@@ -1,46 +1,99 @@
-apiVersion: v1
-kind: Pod
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
 metadata:
-  name: booksing
-  labels:
-    app: booksing
+  annotations:
+    kubernetes.io/ingress.class: traefik
+  generation: 1
+  name: booksing-ingress
 spec:
-  containers:
-  - name: booksing
-    image: booksing
-    readinessProbe:
-      httpGet:
-        path: /
-        port: 7132
-      initialDelaySeconds: 2
-      periodSeconds: 1
-    lifecycle:
-      postStart:
-        httpGet:
-          path: /refresh
-          port: 7132
-    ports:
-    - containerPort: 7132
-      name: booksing
-    env:
-    - name: MONGO_HOST
-      value: mongodb
-    - name: BOOK_DIR
-      value: /books
-    - name: DATABASE_LOCATION
-      value: /tmp/booksing.db
+  rules:
+  - host: booksing.dev.erwin.land
+    http:
+      paths:
+      - backend:
+          serviceName: dev-booksing
+          servicePort: 7132
 ...
 ---
-kind: Service
 apiVersion: v1
+kind: Service
 metadata:
-  name: booksing
+  name: dev-booksing
 spec:
-  selector:
-    app: booksing
   ports:
-  - protocol: TCP
+  - name: dev-booksing-http
     port: 7132
-    targetPort: booksing
-    name: booksing
-  type: LoadBalancer
+    protocol: TCP
+    targetPort: web
+  selector:
+    app: dev-booksing
+  sessionAffinity: None
+  type: ClusterIP
+...
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: dev-booksing
+  name: gnur-dev-booksing
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: dev-booksing
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: dev-booksing
+    spec:
+      containers:
+      - env:
+        - name: MONGO_HOST
+          value: mongodb
+        - name: BOOK_DIR
+          value: /booksing
+        - name: DATABASE_LOCATION
+          value: /tmp/booksing.db
+        image: r.erwin.land/gnur/booksing
+        imagePullPolicy: Always
+        name: dev-booksing
+        ports:
+        - containerPort: 7132
+          name: web
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: 7132
+            scheme: HTTP
+          initialDelaySeconds: 2
+          periodSeconds: 1
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            memory: 256Mi
+          requests:
+            memory: 128Mi
+        volumeMounts:
+        - mountPath: /booksing
+          name: books
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+      - name: regcred
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - hostPath:
+          path: /var/lib/volumes/booksing
+          type: Directory
+        name: books
