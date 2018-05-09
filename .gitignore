@@ -1,6 +1,7 @@
 build
 .vscode
 bindata_assetfs
+bindata.go
 booksing
 bookdump/*
 dist/*
