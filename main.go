@@ -192,7 +192,6 @@ func (app booksingApp) filterBooks(filter string, limit int) []Book {
 	if filter == "" {
 		iter = app.books.Find(nil).Limit(limit).Iter()
 	} else {
-		//iter = app.books.Find(bson.M{"author": bson.RegEx{Pattern: "/.*" + filter + ".*"}}).Limit(limit).Iter()
 		if strings.Contains(filter, " ") {
 			s := getMetaphoneKeys(filter)
 			iter = app.books.Find(bson.M{"metaphone_keys": bson.M{"$all": s}}).Limit(limit).Iter()
