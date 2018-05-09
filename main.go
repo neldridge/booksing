@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"net/smtp"
@@ -18,7 +17,6 @@ import (
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/globalsign/mgo"
-	"github.com/google/uuid"
 	"github.com/jordan-wright/email"
 	zglob "github.com/mattn/go-zglob"
 )
@@ -44,11 +42,6 @@ type bookConvertRequest struct {
 }
 
 // User represents a user..
-type User struct {
-	Name  string
-	Token string
-}
-
 func main() {
 	envDeletes := os.Getenv("ALLOW_DELETES")
 	allowDeletes := envDeletes != "" && strings.ToLower(envDeletes) == "true"
@@ -100,10 +93,9 @@ func main() {
 	})
 	http.HandleFunc("/refresh", app.refreshBooks(bookDir, allowDeletes))
 	http.HandleFunc("/books.json", app.getBooks())
-	http.HandleFunc("/adduser", app.addUser())
 	http.HandleFunc("/download/", app.getBook())
-
 	http.Handle("/", http.FileServer(assetFS()))
+
 	log.Println("Please visit http://localhost:7132 to view booksing")
 	log.Fatal(http.ListenAndServe(":7132", nil))
 }
@@ -155,16 +147,10 @@ func convertAndSendBook(c *Book, req bookConvertRequest) {
 }
 func (app booksingApp) getBook() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		c, err := r.Cookie("token")
-		if err != nil || !app.validToken(c.Value) {
-			http.Error(w, "denied", http.StatusForbidden)
-			return
-		}
 		fileName := r.URL.Query().Get("book")
-		fmt.Println(c.Value)
 		fmt.Println("trying to download ", fileName)
 		var book Book
-		err = app.books.Find(bson.M{"filename": fileName}).One(&book)
+		err := app.books.Find(bson.M{"filename": fileName}).One(&book)
 		if err != nil {
 			return
 		}
@@ -173,54 +159,8 @@ func (app booksingApp) getBook() http.HandlerFunc {
 	}
 }
 
-func (app booksingApp) validToken(cookie string) bool {
-	if os.Getenv("TOKEN_REQUIRED") != "true" {
-		return true
-	}
-	parts := strings.SplitN(cookie, "_", 2)
-	if len(parts) != 2 {
-		return false
-	}
-	var user User
-	err := app.users.Find(bson.M{"name": parts[0]}).One(&user)
-	if err != nil {
-		return false
-	}
-	return parts[1] == user.Token
-}
-
-func (app booksingApp) addUser() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		addr := strings.Split(r.RemoteAddr, ":")[0]
-		if addr != "127.0.0.1" {
-			http.Error(w, "denied", http.StatusForbidden)
-			return
-		}
-		username := r.URL.Query().Get("username")
-		if username == "" {
-			http.Error(w, "please provide username", http.StatusNotFound)
-			return
-		}
-		token := uuid.New().String()
-		var user User
-		user.Name = username
-		user.Token = token
-		err := app.users.Insert(&user)
-		if err != nil {
-			http.Error(w, "unknown error: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		io.WriteString(w, fmt.Sprintf("%s_%s\n", username, token))
-	}
-}
-
 func (app booksingApp) getBooks() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		c, err := r.Cookie("token")
-		if err != nil || !app.validToken(c.Value) {
-			http.Error(w, "denied", http.StatusForbidden)
-			return
-		}
 		var resp bookResponse
 		var limit int
 		numString := r.URL.Query().Get("results")
@@ -252,8 +192,13 @@ func (app booksingApp) filterBooks(filter string, limit int) []Book {
 	if filter == "" {
 		iter = app.books.Find(nil).Limit(limit).Iter()
 	} else {
-		iter = app.books.Find(bson.M{"author": bson.RegEx{Pattern: filter}}).Limit(limit).Iter()
-		//TODO: add title
+		//iter = app.books.Find(bson.M{"author": bson.RegEx{Pattern: "/.*" + filter + ".*"}}).Limit(limit).Iter()
+		if strings.Contains(filter, " ") {
+			s := getMetaphoneKeys(filter)
+			iter = app.books.Find(bson.M{"metaphone_keys": bson.M{"$all": s}}).Limit(limit).Iter()
+		} else {
+			iter = app.books.Find(bson.M{"search_keys": filter}).Limit(limit).Iter()
+		}
 	}
 	err := iter.All(&books)
 	if err != nil {
