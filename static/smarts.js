@@ -9,7 +9,6 @@ Vue.component('modal', {
       smtppass: localStorage.getItem("smtppass"),
       convert: localStorage.getItem("convert") == "true",
       enableSend: localStorage.getItem("enablesend") =="true",
-      token: localStorage.getItem("token") == null ? "" : localStorage.getItem("token"),
       resultcount: 50
     }
   },
@@ -25,9 +24,7 @@ Vue.component('modal', {
       localStorage.setItem("smtppass", this.smtppass)
       localStorage.setItem("convert", this.convert)
       localStorage.setItem("enablesend", this.enableSend)
-      localStorage.setItem("token", this.token)
       localStorage.setItem("resultcount", this.resultcount)
-      document.cookie = "token=" + this.token
       this.close();
     }
 }
@@ -54,9 +51,6 @@ Vue.component('modal', {
         this.getBooks()
       }
     },
-    mounted: function () {
-      document.cookie = "token=" + localStorage.getItem("token")
-    },
 
     methods: {
       // _.debounce is a function provided by lodash to limit how
@@ -79,7 +73,7 @@ Vue.component('modal', {
               vm.searchDone = true;
             })
             .catch(function (error) {
-              vm.statusMessage = "click configure and save your token"
+              vm.statusMessage = "Something went wrong"
             })
         },
         // This is the number of milliseconds we wait for the
