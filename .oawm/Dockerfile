@@ -1,4 +1,4 @@
-FROM alpine:latest  
+FROM gnur/booksing-base
 
 CMD ["./app"]
 

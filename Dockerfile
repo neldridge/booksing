@@ -9,7 +9,7 @@ COPY vendor vendor
 COPY *.go ./
 RUN go build -o app *.go
 
-FROM alpine:latest  
+FROM gnur/booksing-base
 CMD ["./app"]
 COPY testdata/ /books/
 COPY --from=builder /go/src/github.com/gnur/booksing/app /
