@@ -83,7 +83,7 @@ func main() {
 		}
 		var convertBook Book
 		//err = db.One("ID", convert.BookID, &convertBook)
-		err = app.books.Find(bson.M{"id": convert.BookID}).One(&convertBook)
+		err = app.books.Find(bson.M{"hash": convert.BookID}).One(&convertBook)
 		if err == nil {
 			go convertAndSendBook(&convertBook, convert)
 		} else {
