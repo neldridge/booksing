@@ -83,7 +83,7 @@ func main() {
 		}
 		var convertBook Book
 		//err = db.One("ID", convert.BookID, &convertBook)
-		err = app.books.Find(bson.M{"hash": convert.BookID}).One(&convertBook)
+		err = app.books.Find(bson.M{"id": convert.BookID}).One(&convertBook)
 		if err == nil {
 			go convertAndSendBook(&convertBook, convert)
 		} else {
@@ -194,9 +194,9 @@ func (app booksingApp) filterBooks(filter string, limit int) []Book {
 	} else {
 		if strings.Contains(filter, " ") {
 			s := getMetaphoneKeys(filter)
-			iter = app.books.Find(bson.M{"metaphone_keys": bson.M{"$all": s}}).Limit(limit).Iter()
+			iter = app.books.Find(bson.M{"metaphone_keys": bson.M{"$all": s}}).Limit(limit).Sort("author", "title").Iter()
 		} else {
-			iter = app.books.Find(bson.M{"search_keys": filter}).Limit(limit).Iter()
+			iter = app.books.Find(bson.M{"search_keys": filter}).Limit(limit).Sort("author", "title").Iter()
 		}
 	}
 	err := iter.All(&books)
@@ -241,7 +241,6 @@ func (app booksingApp) refreshBooks(bookDir string, allowDeletes bool) http.Hand
 
 func (app booksingApp) bookParser(bookQ chan string, resultQ chan int, allowDeletes bool) {
 	for filename := range bookQ {
-		log.Println("parsing", filename)
 		var dbBook Book
 		//err := db.One("Filepath", filename, &dbBook)
 		err := app.books.Find(bson.M{"filepath": filename}).One(&dbBook)
@@ -249,6 +248,7 @@ func (app booksingApp) bookParser(bookQ chan string, resultQ chan int, allowDele
 			resultQ <- 1
 			continue
 		}
+		log.Println("parsing", filename)
 		book, err := NewBookFromFile(filename)
 		if err != nil {
 			if allowDeletes {
