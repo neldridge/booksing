@@ -98,9 +98,9 @@ Vue.component('modal', {
         vm.description = book.description;
         vm.descriptionVisible = true;
       },
-      sendBookToKindle: function (bookid) {
+      sendBookToKindle: function (id) {
         axios.post('/convert', {
-            bookid: bookid,
+            bookhash: id,
             email: localStorage.getItem("email"),
             smtpserver: localStorage.getItem("smtpserver"),
             smtpuser: localStorage.getItem("smtpuser"),

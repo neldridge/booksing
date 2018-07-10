@@ -33,7 +33,7 @@ type bookResponse struct {
 }
 
 type bookConvertRequest struct {
-	BookID        string `json:"bookid"`
+	Hash          string `json:"bookhash"`
 	Receiver      string `json:"email"`
 	SMTPServer    string `json:"smtpserver"`
 	SMTPUser      string `json:"smtpuser"`
@@ -82,14 +82,13 @@ func main() {
 			return
 		}
 		var convertBook Book
-		//err = db.One("ID", convert.BookID, &convertBook)
-		err = app.books.Find(bson.M{"id": convert.BookID}).One(&convertBook)
+		err = app.books.Find(bson.M{"hash": convert.Hash}).One(&convertBook)
 		if err == nil {
 			go convertAndSendBook(&convertBook, convert)
 		} else {
-			log.Println(err.Error())
+			http.Error(w, err.Error(), 400)
 		}
-		log.Println(convert.BookID)
+		fmt.Fprintf(w, "%q", "ok")
 	})
 	http.HandleFunc("/refresh", app.refreshBooks(bookDir, allowDeletes))
 	http.HandleFunc("/books.json", app.getBooks())

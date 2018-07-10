@@ -96,9 +96,9 @@
             <template v-for="book in books">
             <tr>
               <td>{{ book.author }}</td>
-              <td>{{ book.title }} </td>
+              <td>{{ book.title }}</td>
               <td v-if="enableSend">
-                <a class="button button-primary" v-on:click.stop="sendBookToKindle(book.id)">send
+                <a class="button button-primary" v-on:click.stop="sendBookToKindle(book.hash)">send
                 <span v-if="book.hasmobi">✓</span>
                 <span v-else>✗</span></a>
               </td>

@@ -49,15 +49,15 @@ func fix(s string, capitalize, correctOrder bool) string {
 // Book represents a book
 type Book struct {
 	ID            bson.ObjectId `json:"id"`
-	Hash          string
-	Title         string   `json:"title"`
-	Author        string   `json:"author"`
-	Description   string   `json:"description"`
-	Filepath      string   `json:"filepath"`
-	Filename      string   `json:"filename"`
-	HasMobi       bool     `json:"hasmobi"`
-	MetaphoneKeys []string `bson:"metaphone_keys"`
-	SearchWords   []string `bson:"search_keys"`
+	Hash          string        `json:"hash"`
+	Title         string        `json:"title"`
+	Author        string        `json:"author"`
+	Description   string        `json:"description"`
+	Filepath      string        `json:"filepath"`
+	Filename      string        `json:"filename"`
+	HasMobi       bool          `json:"hasmobi"`
+	MetaphoneKeys []string      `bson:"metaphone_keys"`
+	SearchWords   []string      `bson:"search_keys"`
 }
 
 // NewBookFromFile creates a book object from a file
