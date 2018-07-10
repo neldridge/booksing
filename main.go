@@ -105,20 +105,12 @@ func convertAndSendBook(c *Book, req bookConvertRequest) {
 	log.Println("-----------------------------------")
 	if !c.HasMobi && req.ConvertToMobi {
 		log.Println("first convert the book")
-		cmd := exec.Command("kindlegen", c.Filepath)
+		mobiPath := strings.Replace(c.Filepath, ".epub", ".mobi", 1)
+		cmd := exec.Command("ebook-convert", c.Filepath, mobiPath)
 		log.Printf("Running command and waiting for it to finish...")
 		err := cmd.Run()
 		if err != nil {
 			log.Printf("Command finished with error: %v", err)
-			mobiPath := strings.Replace(c.Filepath, ".epub", ".mobi", 1)
-			cmd := exec.Command("ebook-convert", c.Filepath, mobiPath)
-			log.Printf("Running command and waiting for it to finish...")
-			err := cmd.Run()
-			if err != nil {
-				log.Printf("Command finished with error: %v", err)
-			} else {
-				c.HasMobi = true
-			}
 		} else {
 			c.HasMobi = true
 		}
@@ -148,12 +140,17 @@ func convertAndSendBook(c *Book, req bookConvertRequest) {
 func (app booksingApp) getBook() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fileName := r.URL.Query().Get("book")
+		toMobi := strings.HasSuffix(fileName, ".mobi")
 		fmt.Println("trying to download ", fileName)
 		var book Book
+		if toMobi {
+			fileName = strings.Replace(fileName, ".mobi", ".epub", 1)
+		}
 		err := app.books.Find(bson.M{"filename": fileName}).One(&book)
 		if err != nil {
 			return
 		}
+		book.Filepath = strings.Replace(book.Filepath, ".epub", ".mobi", 1)
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", path.Base(book.Filepath)))
 		http.ServeFile(w, r, book.Filepath)
 	}
@@ -245,6 +242,13 @@ func (app booksingApp) bookParser(bookQ chan string, resultQ chan int, allowDele
 		//err := db.One("Filepath", filename, &dbBook)
 		err := app.books.Find(bson.M{"filepath": filename}).One(&dbBook)
 		if err == nil {
+			if !dbBook.HasMobi {
+				mobiPath := strings.Replace(filename, ".epub", ".mobi", -1)
+				if _, err := os.Stat(mobiPath); err == nil {
+					dbBook.HasMobi = true
+					app.books.Update(bson.M{"filepath": filename}, dbBook)
+				}
+			}
 			resultQ <- 1
 			continue
 		}

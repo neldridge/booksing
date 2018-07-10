@@ -90,6 +90,7 @@
               <th v-if="enableSend">action</th>
               <th></th>
               <th></th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -106,7 +107,10 @@
                 <a class="button button-primary" v-on:click.stop="showDescription(book)" v-if="book.description != 'Unknown'">description</a>
               </td>
               <td>
-                <a class="button button-primary" :href="'/download/?book=' + book.filename">download</a>
+                <a class="button button-primary" :href="'/download/?book=' + book.filename">.epub</a>
+              </td>
+              <td v-if="book.hasmobi">
+                <a class="button button-primary" :href="'/download/?book=' + book.filename.replace('epub', 'mobi')">.mobi</a>
               </td>
             </tr>
             </template>
