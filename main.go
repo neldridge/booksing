@@ -107,9 +107,10 @@ func convertAndSendBook(c *Book, req bookConvertRequest) {
 		mobiPath := strings.Replace(c.Filepath, ".epub", ".mobi", 1)
 		cmd := exec.Command("ebook-convert", c.Filepath, mobiPath)
 		log.Printf("Running command and waiting for it to finish...")
-		err := cmd.Run()
+		stdoutStderr, err := cmd.CombinedOutput()
 		if err != nil {
 			log.Printf("Command finished with error: %v", err)
+			fmt.Println(stdoutStderr)
 		} else {
 			c.HasMobi = true
 		}
