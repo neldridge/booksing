@@ -92,7 +92,9 @@ func main() {
 	})
 	http.HandleFunc("/refresh", app.refreshBooks(bookDir, allowDeletes))
 	http.HandleFunc("/books.json", app.getBooks())
-	http.HandleFunc("/download/", app.getBook())
+	http.HandleFunc("/book.json", app.getBook())
+	http.HandleFunc("/convert/", app.convertBook())
+	http.HandleFunc("/download/", app.downloadBook())
 	http.Handle("/", http.FileServer(assetFS()))
 
 	log.Println("Please visit http://localhost:7132 to view booksing")
@@ -137,7 +139,7 @@ func convertAndSendBook(c *Book, req bookConvertRequest) {
 	log.Println(c)
 	log.Println("-----------------------------------")
 }
-func (app booksingApp) getBook() http.HandlerFunc {
+func (app booksingApp) downloadBook() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fileName := r.URL.Query().Get("book")
 		toMobi := strings.HasSuffix(fileName, ".mobi")
@@ -148,11 +150,55 @@ func (app booksingApp) getBook() http.HandlerFunc {
 		}
 		err := app.books.Find(bson.M{"filename": fileName}).One(&book)
 		if err != nil {
+			fmt.Println(err)
 			return
 		}
-		book.Filepath = strings.Replace(book.Filepath, ".epub", ".mobi", 1)
+		if toMobi {
+			book.Filepath = strings.Replace(book.Filepath, ".epub", ".mobi", 1)
+		}
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", path.Base(book.Filepath)))
 		http.ServeFile(w, r, book.Filepath)
+	}
+}
+
+func (app booksingApp) getBook() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		hash := r.URL.Query().Get("hash")
+		var book Book
+		err := app.books.Find(bson.M{"hash": hash}).One(&book)
+		if err != nil {
+			return
+		}
+		json.NewEncoder(w).Encode(book)
+	}
+}
+
+func (app booksingApp) convertBook() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := r.ParseForm()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		hash := r.Form.Get("hash")
+		fmt.Println(hash)
+		var book Book
+		err = app.books.Find(bson.M{"hash": hash}).One(&book)
+		if err != nil {
+			return
+		}
+		mobiPath := strings.Replace(book.Filepath, ".epub", ".mobi", 1)
+		cmd := exec.Command("ebook-convert", book.Filepath, mobiPath)
+		log.Printf("Running command and waiting for it to finish...")
+		stdoutStderr, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Printf("Command finished with error: %v", err)
+			fmt.Println(stdoutStderr)
+		} else {
+			book.HasMobi = true
+			app.books.Update(bson.M{"hash": hash}, book)
+		}
+		json.NewEncoder(w).Encode(book)
 	}
 }
 

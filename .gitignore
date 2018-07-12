@@ -5,3 +5,4 @@ bindata.go
 booksing
 bookdump/*
 dist/*
+web/node_modules/*
