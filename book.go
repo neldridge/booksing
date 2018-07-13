@@ -21,6 +21,7 @@ import (
 )
 
 var yearRemove = regexp.MustCompile(`\((1|2)[0-9]{3}\)`)
+var drukRemove = regexp.MustCompile(`(?i)/ druk [0-9]+/i`)
 
 func fix(s string, capitalize, correctOrder bool) string {
 	if s == "" {
@@ -39,6 +40,7 @@ func fix(s string, capitalize, correctOrder bool) string {
 	}
 
 	s = yearRemove.ReplaceAllString(s, "")
+	s = drukRemove.ReplaceAllString(s, "")
 	s = strings.Replace(s, ".", " ", -1)
 	s = strings.Replace(s, "  ", " ", -1)
 	s = strings.TrimSpace(s)

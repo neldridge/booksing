@@ -9,8 +9,9 @@ import (
 	"github.com/antzucaro/matchr"
 )
 
+var reg = regexp.MustCompile("[^a-z]+")
+
 func getLowercasedSlice(s string) []string {
-	reg, _ := regexp.Compile("[^a-z]+")
 	var returnParts []string
 	parts := strings.Split(s, " ")
 	for _, part := range parts {
@@ -40,7 +41,8 @@ func metaphonify(s string) []string {
 	var nameParts []string
 	names := strings.Split(s, " ")
 	for _, name := range names {
-		a, _ := matchr.DoubleMetaphone(name)
+		cleaned := reg.ReplaceAllString(strings.ToLower(name), "")
+		a, _ := matchr.DoubleMetaphone(cleaned)
 		if len(a) >= 1 {
 			nameParts = append(nameParts, a)
 		}
