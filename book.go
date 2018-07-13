@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 
 	"strings"
@@ -19,6 +20,8 @@ import (
 	"golang.org/x/tools/godoc/vfs/zipfs"
 )
 
+var yearRemove = regexp.MustCompile(`\((1|2)[0-9]{3}\)`)
+
 func fix(s string, capitalize, correctOrder bool) string {
 	if s == "" {
 		return "Unknown"
@@ -26,6 +29,7 @@ func fix(s string, capitalize, correctOrder bool) string {
 	if capitalize {
 		s = strings.Title(strings.ToLower(s))
 		s = strings.Replace(s, "'S", "'s", -1)
+		s = strings.Replace(s, "/ Druk 1", "", -1)
 	}
 	if correctOrder && strings.Contains(s, ",") {
 		sParts := strings.Split(s, ",")
@@ -33,6 +37,12 @@ func fix(s string, capitalize, correctOrder bool) string {
 			s = strings.TrimSpace(sParts[1]) + " " + strings.TrimSpace(sParts[0])
 		}
 	}
+
+	s = yearRemove.ReplaceAllString(s, "")
+	s = strings.Replace(s, ".", " ", -1)
+	s = strings.Replace(s, "  ", " ", -1)
+	s = strings.TrimSpace(s)
+
 	return strings.Map(func(in rune) rune {
 		switch in {
 		case '“', '‹', '”', '›':

@@ -263,7 +263,7 @@ func (app booksingApp) refreshBooks(bookDir string, allowDeletes bool) http.Hand
 		bookQ := make(chan string, len(matches))
 		resultQ := make(chan int)
 
-		for w := 0; w < 1; w++ { //not sure yet how concurrent-proof my solution is
+		for w := 0; w < 4; w++ { //not sure yet how concurrent-proof my solution is
 			go app.bookParser(bookQ, resultQ, allowDeletes)
 		}
 
@@ -288,13 +288,6 @@ func (app booksingApp) bookParser(bookQ chan string, resultQ chan int, allowDele
 		//err := db.One("Filepath", filename, &dbBook)
 		err := app.books.Find(bson.M{"filepath": filename}).One(&dbBook)
 		if err == nil {
-			if !dbBook.HasMobi {
-				mobiPath := strings.Replace(filename, ".epub", ".mobi", -1)
-				if _, err := os.Stat(mobiPath); err == nil {
-					dbBook.HasMobi = true
-					app.books.Update(bson.M{"filepath": filename}, dbBook)
-				}
-			}
 			resultQ <- 1
 			continue
 		}
