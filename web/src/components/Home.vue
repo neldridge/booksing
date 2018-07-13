@@ -15,20 +15,12 @@
         </p>
       </div>
       </div>
-      <!--
-      <div class="nine columns">
-        <div v-if="searchDone">
-          {{ books.length }} results <span v-if="total != books.length">({{ total }} books searched)</span>
-        </div>
-        <div v-else>
-          {{ statusMessage }}
-        </div>
-      </div>
-      -->
     </form>
+    <!--
       <div class="level-item">
         <a class="button" v-on:click.stop="toggleSettings">settings</a>
       </div>
+      -->
     </nav>
   
   <div class="modal" id="settings">
