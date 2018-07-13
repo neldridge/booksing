@@ -143,6 +143,9 @@ export default {
       this.getBooks();
     }
   },
+  mounted: function() {
+    this.getBooks();
+  },
 
   methods: {
     convertBook: function(hash) {
@@ -188,6 +191,7 @@ export default {
           .then(function(response) {
             vm.books = response.data.books;
             vm.total = response.data.total;
+            document.title = `booksing - ${vm.total} books available for searching`
             vm.searchDone = true;
           })
           .catch(function(error) {
