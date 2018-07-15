@@ -310,9 +310,12 @@ func (app booksingApp) bookParser(bookQ chan string, resultQ chan int, allowDele
 			if err != nil {
 				fmt.Println(err)
 			}
-		} else if allowDeletes {
-			fmt.Println("Deleting ", filename)
-			os.Remove(filename)
+		} else {
+			fmt.Println("Found duplicate", filename, "of", dbBook.Filename)
+			if allowDeletes {
+				fmt.Println("Deleting ", filename)
+				os.Remove(filename)
+			}
 		}
 		//for _, tag := range book.MatchKey {
 		//	addBookToTag(db, tag, book.ID)

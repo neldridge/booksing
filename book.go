@@ -2,11 +2,8 @@ package main
 
 import (
 	"archive/zip"
-	"crypto/sha1"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -30,7 +27,6 @@ func fix(s string, capitalize, correctOrder bool) string {
 	if capitalize {
 		s = strings.Title(strings.ToLower(s))
 		s = strings.Replace(s, "'S", "'s", -1)
-		s = strings.Replace(s, "/ Druk 1", "", -1)
 	}
 	if correctOrder && strings.Contains(s, ",") {
 		sParts := strings.Split(s, ",")
@@ -141,17 +137,13 @@ func NewBookFromFile(path string) (bk *Book, err error) {
 
 	book.Title = fix(book.Title, true, false)
 	book.Author = fix(book.Author, true, true)
-	book.Description = fix(book.Description, false, false)
 	book.Description = sanitize.HTML(book.Description)
 
 	searchWords := book.Title + " " + book.Author
 	book.MetaphoneKeys = getMetaphoneKeys(searchWords)
 	book.SearchWords = getLowercasedSlice(searchWords)
 
-	id := sha1.New()
-	io.WriteString(id, book.Author)
-	io.WriteString(id, book.Title)
-	book.Hash = hex.EncodeToString(id.Sum(nil))[:10]
+	book.Hash = generalizer(searchWords)
 
 	return book, nil
 }

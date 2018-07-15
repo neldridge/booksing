@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"regexp"
 	"sort"
 	"strings"
@@ -11,6 +10,24 @@ import (
 
 var reg = regexp.MustCompile("[^a-z]+")
 
+var uselessWords = []string{
+	"le", "la", "et",
+	"de", "het", "en",
+	"the", "and", "a", "an",
+}
+
+func generalizer(s string) string {
+	s = " " + s + " "
+	s = reg.ReplaceAllString(strings.ToLower(s), " ")
+	for _, w := range uselessWords {
+		s = strings.Replace(s, " "+w+" ", " ", -1)
+	}
+	keys := getMetaphoneKeys(s)
+	s = strings.Join(keys, "")
+
+	return s
+}
+
 func getLowercasedSlice(s string) []string {
 	var returnParts []string
 	parts := strings.Split(s, " ")
@@ -19,10 +36,8 @@ func getLowercasedSlice(s string) []string {
 		returnParts = append(returnParts, cleaned)
 	}
 
-	log.Println(len(parts), parts)
 	returnParts = unique(returnParts)
 	sort.Strings(returnParts)
-	log.Println(len(parts), parts)
 
 	return returnParts
 }
@@ -47,6 +62,7 @@ func metaphonify(s string) []string {
 			nameParts = append(nameParts, a)
 		}
 	}
+	sort.Strings(nameParts)
 	return nameParts
 }
 
