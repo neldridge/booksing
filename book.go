@@ -18,7 +18,7 @@ import (
 )
 
 var yearRemove = regexp.MustCompile(`\((1|2)[0-9]{3}\)`)
-var drukRemove = regexp.MustCompile(`(?i)/ druk [0-9]+/i`)
+var drukRemove = regexp.MustCompile(`(?i)/ druk [0-9]+/`)
 
 func fix(s string, capitalize, correctOrder bool) string {
 	if s == "" {
