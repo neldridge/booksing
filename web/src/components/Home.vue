@@ -189,8 +189,12 @@ export default {
         var vm = this;
         vm.searchDone = false;
         vm.statusMessage = "getting results";
+        var uri = "/books.json"
+        if (this.searchstring == "/dups") {
+          uri = "/duplicates.json"
+        }
         axios
-          .get("/books.json", {
+          .get(uri, {
             params: {
               filter: this.searchstring,
               results: 100

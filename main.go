@@ -72,6 +72,7 @@ func main() {
 
 	http.HandleFunc("/refresh", app.refreshBooks(bookDir, allowDeletes))
 	http.HandleFunc("/books.json", app.getBooks())
+	http.HandleFunc("/duplicates.json", app.getDuplicates())
 	http.HandleFunc("/book.json", app.getBook())
 	http.HandleFunc("/convert/", app.convertBook())
 	http.HandleFunc("/delete/", app.deleteBook())
@@ -196,6 +197,66 @@ func (app booksingApp) deleteBook() http.HandlerFunc {
 		os.Remove(book.Filepath)
 
 		app.books.Remove(bson.M{"hash": hash})
+	}
+}
+
+type pipelineResult struct {
+	Title  string   `bson:"_id"`
+	Count  int      `bson:"count"`
+	Hashes []string `bson:"docs"`
+}
+
+func (app booksingApp) getDuplicates() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var resp bookResponse
+		var book Book
+		numResults, err := app.books.Count()
+		if err != nil {
+			log.Println(err)
+		}
+		resp.TotalCount = numResults
+
+		pipe := app.books.Pipe([]bson.M{
+			bson.M{
+				"$group": bson.M{
+					"_id":   "$title",
+					"count": bson.M{"$sum": 1},
+					"docs":  bson.M{"$push": "$hash"},
+				},
+			},
+			bson.M{
+				"$match": bson.M{
+					"count": bson.M{"$gt": 1.0},
+				},
+			},
+			bson.M{
+				"$limit": 500,
+			},
+		})
+		iter := pipe.Iter()
+		var dupes []pipelineResult
+
+		err = iter.All(&dupes)
+		if err != nil {
+			fmt.Println(err)
+		}
+		dup := dupes[0]
+		fmt.Printf("%+v\n", dupes)
+		fmt.Println(dup)
+
+		for _, hash := range dup.Hashes {
+			err := app.books.Find(bson.M{"hash": hash}).One(&book)
+			if err != nil {
+				continue
+			}
+			resp.Books = append(resp.Books, book)
+		}
+
+		if len(resp.Books) == 0 {
+			resp.Books = []Book{}
+		}
+
+		json.NewEncoder(w).Encode(resp)
 	}
 }
 
