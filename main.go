@@ -263,7 +263,7 @@ func (app booksingApp) refreshBooks(bookDir string, allowDeletes bool) http.Hand
 		bookQ := make(chan string, len(matches))
 		resultQ := make(chan int)
 
-		for w := 0; w < 4; w++ { //not sure yet how concurrent-proof my solution is
+		for w := 0; w < 6; w++ { //not sure yet how concurrent-proof my solution is
 			go app.bookParser(bookQ, resultQ, allowDeletes)
 		}
 
