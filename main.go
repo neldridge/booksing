@@ -92,6 +92,11 @@ func (app booksingApp) createIndices() error {
 			DropDups: true,
 		},
 		mgo.Index{
+			Key:      []string{"filepath"},
+			Unique:   true,
+			DropDups: true,
+		},
+		mgo.Index{
 			Key:      []string{"metaphone_keys"},
 			Unique:   false,
 			DropDups: false,
