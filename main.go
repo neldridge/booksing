@@ -245,16 +245,15 @@ func (app booksingApp) getDuplicates() http.HandlerFunc {
 		if err != nil {
 			fmt.Println(err)
 		}
-		dup := dupes[0]
-		fmt.Printf("%+v\n", dupes)
-		fmt.Println(dup)
 
-		for _, hash := range dup.Hashes {
-			err := app.books.Find(bson.M{"hash": hash}).One(&book)
-			if err != nil {
-				continue
+		for _, dup := range dupes {
+			for _, hash := range dup.Hashes {
+				err := app.books.Find(bson.M{"hash": hash}).One(&book)
+				if err != nil {
+					continue
+				}
+				resp.Books = append(resp.Books, book)
 			}
-			resp.Books = append(resp.Books, book)
 		}
 
 		if len(resp.Books) == 0 {
