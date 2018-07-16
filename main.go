@@ -72,6 +72,7 @@ func main() {
 	http.HandleFunc("/books.json", app.getBooks())
 	http.HandleFunc("/book.json", app.getBook())
 	http.HandleFunc("/convert/", app.convertBook())
+	http.HandleFunc("/delete/", app.deleteBook())
 	http.HandleFunc("/download/", app.downloadBook())
 	http.Handle("/", http.FileServer(assetFS()))
 
@@ -139,6 +140,29 @@ func (app booksingApp) convertBook() http.HandlerFunc {
 			app.books.Update(bson.M{"hash": hash}, book)
 		}
 		json.NewEncoder(w).Encode(book)
+	}
+}
+
+func (app booksingApp) deleteBook() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := r.ParseForm()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		hash := r.Form.Get("hash")
+		var book Book
+		err = app.books.Find(bson.M{"hash": hash}).One(&book)
+		if err != nil {
+			return
+		}
+		if book.HasMobi {
+			mobiPath := strings.Replace(book.Filepath, ".epub", ".mobi", 1)
+			os.Remove(mobiPath)
+		}
+		os.Remove(book.Filepath)
+
+		app.books.Remove(bson.M{"hash": hash})
 	}
 }
 

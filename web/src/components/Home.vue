@@ -90,8 +90,8 @@
                        convert
                      </template>
                    </a>
-                   <a class="card-footer-item">
-                       send
+                   <a class="card-footer-item" v-on:click.stop="deleteBook(book.hash)">
+                       delete
                    </a>
                  </footer>
                </div>
@@ -152,6 +152,22 @@ export default {
             vm.getBooks();
             console.log(response);
             vm.converting = false;
+          })
+          .catch(function(error) {
+            vm.converting = false;
+            console.log(error);
+          });
+
+    },
+    deleteBook: function(hash) {
+      var vm = this;
+      const params = new URLSearchParams();
+      params.append('hash', hash);
+        axios
+          .post("/delete/", params)
+          .then(function(response) {
+            vm.toggleModal(hash);
+            vm.getBooks();
           })
           .catch(function(error) {
             vm.converting = false;
