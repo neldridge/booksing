@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -67,6 +68,7 @@ func main() {
 		books: session.C("books"),
 		users: session.C("users"),
 	}
+	app.createIndices()
 
 	http.HandleFunc("/refresh", app.refreshBooks(bookDir, allowDeletes))
 	http.HandleFunc("/books.json", app.getBooks())
@@ -78,6 +80,37 @@ func main() {
 
 	log.Println("Please visit http://localhost:7132 to view booksing")
 	log.Fatal(http.ListenAndServe(":7132", nil))
+}
+
+func (app booksingApp) createIndices() error {
+
+	indices := []mgo.Index{
+		mgo.Index{
+			Key:      []string{"hash"},
+			Unique:   true,
+			DropDups: true,
+		},
+		mgo.Index{
+			Key:      []string{"metaphone_keys"},
+			Unique:   false,
+			DropDups: false,
+		},
+		mgo.Index{
+			Key:      []string{"search_keys"},
+			Unique:   false,
+			DropDups: false,
+		},
+	}
+	for _, index := range indices {
+		err := app.books.EnsureIndex(index)
+		if err != nil {
+			fmt.Println(index.Key)
+			fmt.Println(err)
+		}
+	}
+
+	return errors.New("success")
+
 }
 
 func (app booksingApp) downloadBook() http.HandlerFunc {
