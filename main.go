@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/smtp"
 	"os"
 	"os/exec"
 	"path"
@@ -17,7 +16,6 @@ import (
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/globalsign/mgo"
-	"github.com/jordan-wright/email"
 	zglob "github.com/mattn/go-zglob"
 )
 
@@ -70,26 +68,6 @@ func main() {
 		users: session.C("users"),
 	}
 
-	http.HandleFunc("/convert", func(w http.ResponseWriter, r *http.Request) {
-		var convert bookConvertRequest
-		if r.Body == nil {
-			http.Error(w, "please provide body", 400)
-			return
-		}
-		err := json.NewDecoder(r.Body).Decode(&convert)
-		if err != nil {
-			http.Error(w, err.Error(), 400)
-			return
-		}
-		var convertBook Book
-		err = app.books.Find(bson.M{"hash": convert.Hash}).One(&convertBook)
-		if err == nil {
-			go convertAndSendBook(&convertBook, convert)
-		} else {
-			http.Error(w, err.Error(), 400)
-		}
-		fmt.Fprintf(w, "%q", "ok")
-	})
 	http.HandleFunc("/refresh", app.refreshBooks(bookDir, allowDeletes))
 	http.HandleFunc("/books.json", app.getBooks())
 	http.HandleFunc("/book.json", app.getBook())
@@ -101,44 +79,6 @@ func main() {
 	log.Fatal(http.ListenAndServe(":7132", nil))
 }
 
-func convertAndSendBook(c *Book, req bookConvertRequest) {
-	var attachment string
-	log.Println("-----------------------------------")
-	if !c.HasMobi && req.ConvertToMobi {
-		log.Println("first convert the book")
-		mobiPath := strings.Replace(c.Filepath, ".epub", ".mobi", 1)
-		cmd := exec.Command("ebook-convert", c.Filepath, mobiPath)
-		log.Printf("Running command and waiting for it to finish...")
-		stdoutStderr, err := cmd.CombinedOutput()
-		if err != nil {
-			log.Printf("Command finished with error: %v", err)
-			fmt.Println(stdoutStderr)
-		} else {
-			c.HasMobi = true
-		}
-	}
-	if c.HasMobi && req.ConvertToMobi {
-		attachment = strings.Replace(c.Filepath, ".epub", ".mobi", 1)
-	} else if !req.ConvertToMobi {
-		attachment = c.Filepath
-	} else {
-		log.Println("mobi not present but was requested")
-		return
-	}
-	e := email.NewEmail()
-	e.From = req.SMTPUser
-	e.To = []string{req.Receiver}
-	e.Subject = "A booksing book"
-	e.Text = []byte("")
-	e.AttachFile(attachment)
-	err := e.Send(req.SMTPServer+":587", smtp.PlainAuth("", req.SMTPUser, req.SMTPPassword, req.SMTPServer))
-	if err != nil {
-		log.Println(err.Error())
-	}
-
-	log.Println(c)
-	log.Println("-----------------------------------")
-}
 func (app booksingApp) downloadBook() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fileName := r.URL.Query().Get("book")
