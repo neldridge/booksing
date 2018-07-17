@@ -8,7 +8,11 @@ import (
 	"github.com/antzucaro/matchr"
 )
 
-var reg = regexp.MustCompile("[^a-z]+")
+var onlyLower = regexp.MustCompile("[^a-z]+")
+var leadingNumbers = regexp.MustCompile("^ *[0-9]+")
+var betweenParentheses = regexp.MustCompile(`\(.*\)`)
+var leadingZeroes = regexp.MustCompile(`^ *(0)([0-9]+) `)
+var alphaNumeric = regexp.MustCompile(`[^a-z0-9]+`)
 
 var uselessWords = []string{
 	"le", "la", "et",
@@ -16,9 +20,50 @@ var uselessWords = []string{
 	"the", "and", "a", "an",
 }
 
+func hashBook(author, title string) string {
+	author = strings.ToLower(author)
+	title = strings.ToLower(title)
+
+	authorParts := strings.Split(author, " ")
+	lastName := authorParts[len(authorParts)-1]
+
+	//remove author from title
+	title = strings.Replace(title, author, "", -1)
+	title = strings.Replace(title, lastName, "", -1)
+
+	//remove leading numbers
+	title = leadingNumbers.ReplaceAllString(title, "")
+
+	//concatenate to half further actions
+	title = lastName + " " + title
+
+	//make sure no whitespace is on either end
+	title = strings.TrimSpace(title)
+
+	//remove everything between parenthesis
+	title = betweenParentheses.ReplaceAllString(title, " ")
+
+	//remove ': a novel'
+	title = strings.Replace(title, ": a novel", " ", -1)
+
+	//remove leading zeroes from numbers
+	title = leadingZeroes.ReplaceAllString(title, " $2 ")
+
+	//remove all non [a-z0-9]
+	title = alphaNumeric.ReplaceAllString(title, "")
+
+	/*
+		id := sha1.New()
+		io.WriteString(id, author)
+		io.WriteString(id, title)
+		return hex.EncodeToString(id.Sum(nil))
+	*/
+	return title
+}
+
 func generalizer(s string) string {
 	s = " " + s + " "
-	s = reg.ReplaceAllString(strings.ToLower(s), " ")
+	s = onlyLower.ReplaceAllString(strings.ToLower(s), " ")
 	for _, w := range uselessWords {
 		s = strings.Replace(s, " "+w+" ", " ", -1)
 	}
@@ -32,7 +77,7 @@ func getLowercasedSlice(s string) []string {
 	var returnParts []string
 	parts := strings.Split(s, " ")
 	for _, part := range parts {
-		cleaned := reg.ReplaceAllString(strings.ToLower(part), "")
+		cleaned := onlyLower.ReplaceAllString(strings.ToLower(part), "")
 		returnParts = append(returnParts, cleaned)
 	}
 
@@ -56,7 +101,7 @@ func metaphonify(s string) []string {
 	var nameParts []string
 	names := strings.Split(s, " ")
 	for _, name := range names {
-		cleaned := reg.ReplaceAllString(strings.ToLower(name), "")
+		cleaned := onlyLower.ReplaceAllString(strings.ToLower(name), "")
 		a, _ := matchr.DoubleMetaphone(cleaned)
 		if len(a) >= 1 {
 			nameParts = append(nameParts, a)

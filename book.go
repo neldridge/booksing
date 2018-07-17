@@ -2,11 +2,8 @@ package main
 
 import (
 	"archive/zip"
-	"crypto/sha1"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -146,10 +143,7 @@ func NewBookFromFile(path string) (bk *Book, err error) {
 	book.MetaphoneKeys = getMetaphoneKeys(searchWords)
 	book.SearchWords = getLowercasedSlice(searchWords)
 
-	id := sha1.New()
-	io.WriteString(id, book.Author)
-	io.WriteString(id, book.Title)
-	book.Hash = hex.EncodeToString(id.Sum(nil))[:10]
+	book.Hash = hashBook(book.Author, book.Title)
 
 	return book, nil
 }

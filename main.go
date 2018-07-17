@@ -335,8 +335,8 @@ func (app booksingApp) refreshBooks(bookDir string, allowDeletes bool) http.Hand
 
 		for a := 0; a < len(matches); a++ {
 			<-resultQ
-			if a > 0 && a%100 == 0 {
-				fmt.Println("Scraped", a, "books so far")
+			if a > 0 && a%500 == 0 {
+				log.Println("Scraped", a, "books so far")
 			}
 		}
 
@@ -353,7 +353,6 @@ func (app booksingApp) bookParser(bookQ chan string, resultQ chan int, allowDele
 			resultQ <- 1
 			continue
 		}
-		log.Println("parsing", filename)
 		book, err := NewBookFromFile(filename)
 		if err != nil {
 			if allowDeletes {
@@ -363,25 +362,14 @@ func (app booksingApp) bookParser(bookQ chan string, resultQ chan int, allowDele
 			resultQ <- 1
 			continue
 		}
-		//err = db.One("ID", book.ID, &dbBook)
-		err = app.books.Find(bson.M{"hash": book.Hash}).One(&dbBook)
-		if err != nil {
-			//TODO: find out what happens if One() fails
-			book.ID = bson.NewObjectId()
-			err = app.books.Insert(book)
-			if err != nil {
-				fmt.Println(err)
-			}
-		} else {
-			fmt.Println("Found duplicate", filename, "of", dbBook.Filename)
+		book.ID = bson.NewObjectId()
+		err = app.books.Insert(book)
+		if err != nil && mgo.IsDup(err) {
 			if allowDeletes {
 				fmt.Println("Deleting ", filename)
 				os.Remove(filename)
 			}
 		}
-		//for _, tag := range book.MatchKey {
-		//	addBookToTag(db, tag, book.ID)
-		//}
 		resultQ <- 1
 	}
 }
