@@ -75,10 +75,10 @@
                  </div>
                  <footer class="card-footer">
                    <a class="card-footer-item" :href="'/download/?book=' + book.filename">
-                       .epub
+                     download .epub
                    </a>
                    <a class="card-footer-item" v-if="book.hasmobi" :href="'/download/?book=' + book.filename.replace('epub', 'mobi')">
-                       .mobi
+                     download .mobi
                    </a>
                    <a class="card-footer-item" v-else v-on:click.stop="convertBook(book.hash)">
                      <template v-if="converting">
@@ -90,9 +90,10 @@
                        convert
                      </template>
                    </a>
+                   <!--
                    <a class="card-footer-item" v-on:click.stop="deleteBook(book.hash)">
                        delete
-                   </a>
+                   </a>-->
                  </footer>
                </div>
                  </div>
