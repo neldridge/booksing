@@ -21,14 +21,21 @@ import (
 )
 
 type booksingApp struct {
-	books *mgo.Collection
-	users *mgo.Collection
+	books     *mgo.Collection
+	downloads *mgo.Collection
 }
 
 type bookResponse struct {
 	Books      []Book `json:"books"`
 	TotalCount int    `json:"total"`
 	timestamp  time.Time
+}
+
+type download struct {
+	Book      string
+	User      string
+	IP        string
+	Timestamp time.Time
 }
 
 type bookConvertRequest struct {
@@ -65,8 +72,8 @@ func main() {
 		return
 	}
 	app := booksingApp{
-		books: session.C("books"),
-		users: session.C("users"),
+		books:     session.C("books"),
+		downloads: session.C("downloads"),
 	}
 	app.createIndices()
 
@@ -136,6 +143,18 @@ func (app booksingApp) downloadBook() http.HandlerFunc {
 		if toMobi {
 			book.Filepath = strings.Replace(book.Filepath, ".epub", ".mobi", 1)
 		}
+		ip := r.RemoteAddr
+		if r.Header.Get("x-forwarded-for") != "" {
+			ip = ip + ", " + r.Header.Get("x-forwarded-for")
+		}
+		dl := download{
+			User:      r.Header.Get("x-auth-user"),
+			IP:        ip,
+			Book:      book.Hash,
+			Timestamp: time.Now(),
+		}
+		err = app.downloads.Insert(dl)
+
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", path.Base(book.Filepath)))
 		http.ServeFile(w, r, book.Filepath)
 	}
