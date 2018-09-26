@@ -3,137 +3,86 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:7adb8e7680da6bac610ef441d04c527123332a66c5f6e77e04bcb0ecc4c9a14a"
   name = "github.com/antzucaro/matchr"
   packages = ["."]
-  revision = "63146c76a4e12211c0d269f5fb74dab2c24e3067"
+  pruneopts = ""
+  revision = "cbc221335f3c9d9eff15d1d9d5983ddf70b906b6"
 
 [[projects]]
-  name = "github.com/asdine/storm"
-  packages = [
-    ".",
-    "codec",
-    "codec/json",
-    "codec/msgpack",
-    "index",
-    "internal",
-    "q"
-  ]
-  revision = "dbd37722730b6cb703b5bd825c3f142d87358525"
-  version = "v2.0.0"
-
-[[projects]]
+  digest = "1:b5f28f7eda54d2695765c778c951a2ace52c06afb7da1f7e0c7485baa5b02100"
   name = "github.com/beevik/etree"
   packages = ["."]
-  revision = "15a30b44cfd6c5a16a7ddfe271bf146aaf2d3195"
-  version = "v1.0.0"
-
-[[projects]]
-  name = "github.com/coreos/bbolt"
-  packages = ["."]
-  revision = "583e8937c61f1af6513608ccc75c97b6abdf4ff9"
-  version = "v1.3.0"
+  pruneopts = ""
+  revision = "9d7e8feddccb4ed1b8afb54e368bd323d2ff652c"
+  version = "v1.0.1"
 
 [[projects]]
   branch = "master"
-  name = "github.com/elazarl/go-bindata-assetfs"
-  packages = ["."]
-  revision = "30f82fa23fd844bd5bb1e5f216db87fd77b5eb43"
-
-[[projects]]
-  branch = "master"
+  digest = "1:ff0a3cc34addcbd669622ba0dc8231d4eff046eec7b3eae1ccafd06a901279d3"
   name = "github.com/globalsign/mgo"
   packages = [
+    ".",
     "bson",
-    "internal/json"
+    "internal/json",
+    "internal/sasl",
+    "internal/scram",
   ]
-  revision = "f76e4f9da92ecd56e3be26f5ba92580af1ef97b4"
+  pruneopts = ""
+  revision = "1ca0a4f7cbcbe61c005d1bd43fdd8bb8b71df6bc"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/golang/protobuf"
-  packages = ["proto"]
-  revision = "1e59b77b52bf8e4b449a57e6f79f21226d571845"
-
-[[projects]]
-  name = "github.com/google/uuid"
-  packages = ["."]
-  revision = "064e2069ce9c359c118179501254f67d7d37ba24"
-  version = "0.2"
-
-[[projects]]
-  name = "github.com/jordan-wright/email"
-  packages = ["."]
-  revision = "a62870b0c368c3c29de27027be67d855e308cc37"
-  version = "v2.2"
-
-[[projects]]
+  digest = "1:717859f53ed0a55fab7284704ecaac4b0d292f4caca5ceaa2afd512be49189ea"
   name = "github.com/kennygrant/sanitize"
   packages = ["."]
-  revision = "2e6820834a1f36c626bf19a253b7d3cc060e9b8b"
-  version = "v1.2.3"
+  pruneopts = ""
+  revision = "06ec0d0dbcd497d01e5189b16f5263f712e61a8e"
+  version = "v1.2.4"
 
 [[projects]]
   branch = "master"
+  digest = "1:c186d98ef4526297afabdf84bb02076ea2c78e3b52e88ebdac58325f4f923b8b"
   name = "github.com/mattn/go-zglob"
   packages = [
     ".",
-    "fastwalk"
+    "fastwalk",
   ]
-  revision = "cb5263554791976bf8cdd747c82355370893ecd7"
-
-[[projects]]
-  name = "github.com/vmihailenco/msgpack"
-  packages = [
-    ".",
-    "codes"
-  ]
-  revision = "40b1cac89761d843bbb96b8b27c746ba5937322a"
-  version = "v3.2.3"
+  pruneopts = ""
+  revision = "2ea3427bfa539cca900ca2768d8663ecc8a708c1"
 
 [[projects]]
   branch = "master"
+  digest = "1:6846191f608c0dd6109f37ca46b784f9630191ff13f86ae974135c05a4c92971"
   name = "golang.org/x/net"
   packages = [
-    "context",
     "html",
-    "html/atom"
+    "html/atom",
   ]
-  revision = "d866cfc389cec985d6fda2859936a575a55a3ab6"
+  pruneopts = ""
+  revision = "f04abc6bdfa7a0171a8a0c9fd2ada9391044d056"
 
 [[projects]]
   branch = "master"
-  name = "golang.org/x/sys"
-  packages = ["unix"]
-  revision = "83801418e1b59fb1880e363299581ee543af32ca"
-
-[[projects]]
-  branch = "master"
+  digest = "1:bce40c2689432c3bcf98defee271f3f62f32483c6358d7d19e4c27498b226b76"
   name = "golang.org/x/tools"
   packages = [
     "godoc/vfs",
-    "godoc/vfs/zipfs"
+    "godoc/vfs/zipfs",
   ]
-  revision = "f271d7a0f8cf389f3ee4f6bf8d68e716a60ea571"
-
-[[projects]]
-  name = "google.golang.org/appengine"
-  packages = [
-    ".",
-    "datastore",
-    "internal",
-    "internal/app_identity",
-    "internal/base",
-    "internal/datastore",
-    "internal/log",
-    "internal/modules",
-    "internal/remote_api"
-  ]
-  revision = "150dc57a1b433e64154302bdc40b6bb8aefa313a"
-  version = "v1.0.0"
+  pruneopts = ""
+  revision = "9eb9690e392a79b547be16fa2fa66f1710ed3035"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "919c46bf5a7bae4766233e2e0d49ce263b65bd358fc09a76549dbf5ff7df7860"
+  input-imports = [
+    "github.com/antzucaro/matchr",
+    "github.com/beevik/etree",
+    "github.com/globalsign/mgo",
+    "github.com/globalsign/mgo/bson",
+    "github.com/kennygrant/sanitize",
+    "github.com/mattn/go-zglob",
+    "golang.org/x/tools/godoc/vfs/zipfs",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -34,7 +34,8 @@ var enforceHosts = false // set true in production on app engine
 
 // hostEnforcerHandler redirects requests to "http://foo.golang.org/bar"
 // to "https://golang.org/bar".
-// It permits requests to the host "godoc-test.golang.org" for testing.
+// It permits requests to the host "godoc-test.golang.org" for testing and
+// golang.google.cn for Chinese users.
 type hostEnforcerHandler struct {
 	h http.Handler
 }
@@ -54,13 +55,13 @@ func (h hostEnforcerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, r.URL.String(), http.StatusFound)
 		return
 	}
-	w.Header().Set("Strict-Transport-Security", "max-age=31536000; preload")
+	w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
 	h.h.ServeHTTP(w, r)
 }
 
 func (h hostEnforcerHandler) validHost(host string) bool {
 	switch strings.ToLower(host) {
-	case "golang.org", "godoc-test.golang.org":
+	case "golang.org", "godoc-test.golang.org", "golang.google.cn":
 		return true
 	}
 	return false
@@ -119,6 +120,7 @@ func readTemplates(p *godoc.Presentation, html bool) {
 		p.ImplementsHTML = readTemplate("implements.html")
 		p.MethodSetHTML = readTemplate("methodset.html")
 		p.PackageHTML = readTemplate("package.html")
+		p.PackageRootHTML = readTemplate("packageroot.html")
 		p.SearchHTML = readTemplate("search.html")
 		p.SearchDocHTML = readTemplate("searchdoc.html")
 		p.SearchCodeHTML = readTemplate("searchcode.html")

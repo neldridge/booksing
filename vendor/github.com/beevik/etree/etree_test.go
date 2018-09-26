@@ -10,12 +10,9 @@ import (
 )
 
 func checkEq(t *testing.T, got, want string) {
-	if got == want {
-		return
+	if got != want {
+		t.Errorf("etree: unexpected result.\nGot:\n%s\nWanted:\n%s\n", got, want)
 	}
-	t.Errorf(
-		"etree: unexpected result.\nGot:\n%s\nWanted:\n%s\n",
-		got, want)
 }
 
 func TestDocument(t *testing.T) {
@@ -256,6 +253,70 @@ func TestCopy(t *testing.T) {
 	s2, _ = doc2.WriteToString()
 	if s1 == s2 {
 		t.Error("etree: incorrect result after RemoveElement")
+	}
+}
+
+func TestGetPath(t *testing.T) {
+	testdoc := `<a>
+ <b1>
+  <c1>
+   <d1/>
+   <d1a/>
+  </c1>
+ </b1>
+ <b2>
+  <c2>
+   <d2/>
+  </c2>
+ </b2>
+</a>`
+
+	doc := NewDocument()
+	err := doc.ReadFromString(testdoc)
+	if err != nil {
+		t.Fatalf("etree ReadFromString: %v\n", err)
+	}
+
+	cases := []struct {
+		from    string
+		to      string
+		relpath string
+		topath  string
+	}{
+		{"a", ".", "..", "/"},
+		{".", "a", "./a", "/a"},
+		{"a/b1/c1/d1", ".", "../../../..", "/"},
+		{".", "a/b1/c1/d1", "./a/b1/c1/d1", "/a/b1/c1/d1"},
+		{"a", "a", ".", "/a"},
+		{"a/b1", "a/b1/c1", "./c1", "/a/b1/c1"},
+		{"a/b1/c1", "a/b1", "..", "/a/b1"},
+		{"a/b1/c1", "a/b1/c1", ".", "/a/b1/c1"},
+		{"a", "a/b1", "./b1", "/a/b1"},
+		{"a/b1", "a", "..", "/a"},
+		{"a", "a/b1/c1", "./b1/c1", "/a/b1/c1"},
+		{"a/b1/c1", "a", "../..", "/a"},
+		{"a/b1/c1/d1", "a", "../../..", "/a"},
+		{"a", "a/b1/c1/d1", "./b1/c1/d1", "/a/b1/c1/d1"},
+		{"a/b1", "a/b2", "../b2", "/a/b2"},
+		{"a/b2", "a/b1", "../b1", "/a/b1"},
+		{"a/b1/c1/d1", "a/b2/c2/d2", "../../../b2/c2/d2", "/a/b2/c2/d2"},
+		{"a/b2/c2/d2", "a/b1/c1/d1", "../../../b1/c1/d1", "/a/b1/c1/d1"},
+		{"a/b1/c1/d1", "a/b1/c1/d1a", "../d1a", "/a/b1/c1/d1a"},
+	}
+
+	for _, c := range cases {
+		fe := doc.FindElement(c.from)
+		te := doc.FindElement(c.to)
+
+		rp := te.GetRelativePath(fe)
+		if rp != c.relpath {
+			t.Errorf("GetRelativePath from '%s' to '%s'. Expected '%s', got '%s'.\n", c.from, c.to, c.relpath, rp)
+		}
+
+		p := te.GetPath()
+		if p != c.topath {
+			t.Errorf("GetPath for '%s'. Expected '%s', got '%s'.\n", c.to, c.topath, p)
+		}
 	}
 }
 
