@@ -4,16 +4,16 @@
 <nav class="level">
     <form action="javascript:void()" onsubmit="return false">
       <div class="level-item">
-      <div class="field has-addons">
-        <p class="control">
-        <input class="input" v-model="searchstring" id="search" placeholder="type here to search" type="text">
-        </p>
-        <p class="control">
-          <button class="button">
-            Search
-          </button>
-        </p>
-      </div>
+        <div class="field has-addons">
+          <p class="control">
+          <input class="input" v-model="searchstring" id="search" placeholder="type here to search" type="text">
+          </p>
+          <p class="control">
+            <button class="button">
+              Search
+            </button>
+          </p>
+        </div>
       </div>
     </form>
     <!--
@@ -120,19 +120,14 @@ export default {
       searchstring: "",
       books: [],
       total: 0,
-      enableSend: localStorage.getItem("enablesend") === "true",
-      descriptionVisible: false,
-      description: "",
-      email: "test",
       converting: false,
       searchDone: false,
-      statusMessage: "please enter your query",
       refreshButtonText: "refresh"
     };
   },
   watch: {
     // whenever question changes, this function will run
-    searchstring: function(newQuestion) {
+    searchstring: function() {
       this.getBooks();
     }
   },
@@ -232,28 +227,6 @@ export default {
           console.log(error);
         });
     },
-    showDescription: function(book) {
-      var vm = this;
-      vm.description = book.description;
-      vm.descriptionVisible = true;
-    },
-    sendBookToKindle: function(id) {
-      axios
-        .post("/convert", {
-          bookhash: id,
-          email: localStorage.getItem("email"),
-          smtpserver: localStorage.getItem("smtpserver"),
-          smtpuser: localStorage.getItem("smtpuser"),
-          smtppass: localStorage.getItem("smtppass"),
-          convert: localStorage.getItem("convert") === "true"
-        })
-        .then(function(response) {
-          console.log(response);
-        })
-        .catch(function(error) {
-          console.log(error);
-        });
-    }
   }
 };
 </script>
