@@ -47,7 +47,6 @@ type bookConvertRequest struct {
 	ConvertToMobi bool   `json:"convert"`
 }
 
-// User represents a user..
 func main() {
 	envDeletes := os.Getenv("ALLOW_DELETES")
 	allowDeletes := envDeletes != "" && strings.ToLower(envDeletes) == "true"
@@ -301,7 +300,10 @@ func (app booksingApp) getBooks() http.HandlerFunc {
 		}
 		resp.TotalCount = numResults
 
-		resp.Books = app.filterBooks(filter, limit)
+		resp.Books = app.filterBooks(filter, limit, true)
+		if len(resp.Books) == 0 {
+			resp.Books = app.filterBooks(filter, limit, false)
+		}
 		if len(resp.Books) == 0 {
 			resp.Books = []Book{}
 		}
@@ -310,18 +312,17 @@ func (app booksingApp) getBooks() http.HandlerFunc {
 	}
 }
 
-func (app booksingApp) filterBooks(filter string, limit int) []Book {
+func (app booksingApp) filterBooks(filter string, limit int, exact bool) []Book {
 	var books []Book
 	var iter *mgo.Iter
 	if filter == "" {
 		iter = app.books.Find(nil).Limit(limit).Iter()
+	} else if exact {
+		s := strings.Split(filter, " ")
+		iter = app.books.Find(bson.M{"search_keys": bson.M{"$all": s}}).Limit(limit).Sort("author", "title").Iter()
 	} else {
-		if strings.Contains(filter, " ") {
-			s := getMetaphoneKeys(filter)
-			iter = app.books.Find(bson.M{"metaphone_keys": bson.M{"$all": s}}).Limit(limit).Sort("author", "title").Iter()
-		} else {
-			iter = app.books.Find(bson.M{"search_keys": filter}).Limit(limit).Sort("author", "title").Iter()
-		}
+		s := getMetaphoneKeys(filter)
+		iter = app.books.Find(bson.M{"metaphone_keys": bson.M{"$all": s}}).Limit(limit).Sort("author", "title").Iter()
 	}
 	err := iter.All(&books)
 	if err != nil {
