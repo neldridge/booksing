@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -21,8 +20,11 @@ import (
 )
 
 type booksingApp struct {
-	books     *mgo.Collection
-	downloads *mgo.Collection
+	books         *mgo.Collection
+	downloads     *mgo.Collection
+	allowDeletes  bool
+	allowOrganize bool
+	bookDir       string
 }
 
 type bookResponse struct {
@@ -50,6 +52,8 @@ type bookConvertRequest struct {
 func main() {
 	envDeletes := os.Getenv("ALLOW_DELETES")
 	allowDeletes := envDeletes != "" && strings.ToLower(envDeletes) == "true"
+	envOrganize := os.Getenv("REORGANIZE_BOOKS")
+	allowOrganize := envOrganize != "" && strings.ToLower(envOrganize) == "true"
 	bookDir := os.Getenv("BOOK_DIR")
 	if bookDir == "" {
 		bookDir = "."
@@ -71,12 +75,15 @@ func main() {
 		return
 	}
 	app := booksingApp{
-		books:     session.C("books"),
-		downloads: session.C("downloads"),
+		books:         session.C("books"),
+		downloads:     session.C("downloads"),
+		allowDeletes:  allowDeletes,
+		allowOrganize: allowOrganize,
+		bookDir:       bookDir,
 	}
 	app.createIndices()
 
-	http.HandleFunc("/refresh", app.refreshBooks(bookDir, allowDeletes))
+	http.HandleFunc("/refresh", app.refreshBooks())
 	http.HandleFunc("/books.json", app.getBooks())
 	http.HandleFunc("/duplicates.json", app.getDuplicates())
 	http.HandleFunc("/book.json", app.getBook())
@@ -112,6 +119,11 @@ func (app booksingApp) createIndices() error {
 			Unique:   false,
 			DropDups: false,
 		},
+		mgo.Index{
+			Key:      []string{"date_added"},
+			Unique:   false,
+			DropDups: false,
+		},
 	}
 	for _, index := range indices {
 		err := app.books.EnsureIndex(index)
@@ -121,7 +133,7 @@ func (app booksingApp) createIndices() error {
 		}
 	}
 
-	return errors.New("success")
+	return nil
 
 }
 
@@ -332,21 +344,21 @@ func (app booksingApp) filterBooks(filter string, limit int, exact bool) []Book 
 	return books
 }
 
-func (app booksingApp) refreshBooks(bookDir string, allowDeletes bool) http.HandlerFunc {
+func (app booksingApp) refreshBooks() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Println("starting refresh of booklist")
-		matches, err := zglob.Glob(filepath.Join(bookDir, "/**/*.epub"))
+		matches, err := zglob.Glob(filepath.Join(app.bookDir, "/**/*.epub"))
 		if err != nil {
 			fmt.Println("Scan could not complete: ", err.Error())
 			return
 		}
-		log.Println("found", len(matches), "epubs in ", bookDir)
+		log.Println("found", len(matches), "epubs in ", app.bookDir)
 
 		bookQ := make(chan string, len(matches))
 		resultQ := make(chan int)
 
 		for w := 0; w < 6; w++ { //not sure yet how concurrent-proof my solution is
-			go app.bookParser(bookQ, resultQ, allowDeletes)
+			go app.bookParser(bookQ, resultQ)
 		}
 
 		for _, filename := range matches {
@@ -360,11 +372,11 @@ func (app booksingApp) refreshBooks(bookDir string, allowDeletes bool) http.Hand
 			}
 		}
 
-		log.Println("started refresh of booklist")
+		log.Println("finished refresh of booklist")
 	}
 }
 
-func (app booksingApp) bookParser(bookQ chan string, resultQ chan int, allowDeletes bool) {
+func (app booksingApp) bookParser(bookQ chan string, resultQ chan int) {
 	for filename := range bookQ {
 		var dbBook Book
 		//err := db.One("Filepath", filename, &dbBook)
@@ -373,9 +385,9 @@ func (app booksingApp) bookParser(bookQ chan string, resultQ chan int, allowDele
 			resultQ <- 1
 			continue
 		}
-		book, err := NewBookFromFile(filename)
+		book, err := NewBookFromFile(filename, app.allowOrganize, app.bookDir)
 		if err != nil {
-			if allowDeletes {
+			if app.allowDeletes {
 				fmt.Println("Deleting ", filename)
 				os.Remove(filename)
 			}
@@ -385,7 +397,7 @@ func (app booksingApp) bookParser(bookQ chan string, resultQ chan int, allowDele
 		book.ID = bson.NewObjectId()
 		err = app.books.Insert(book)
 		if err != nil && mgo.IsDup(err) {
-			if allowDeletes {
+			if app.allowDeletes {
 				fmt.Println("Deleting ", filename)
 				os.Remove(filename)
 			}

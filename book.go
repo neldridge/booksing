@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
+	"time"
 
 	"strings"
 
@@ -19,6 +21,7 @@ import (
 
 var yearRemove = regexp.MustCompile(`\((1|2)[0-9]{3}\)`)
 var drukRemove = regexp.MustCompile(`(?i)/ druk [0-9]+`)
+var filenameSafe = regexp.MustCompile("[^a-zA-Z0-9 -]+")
 
 func fix(s string, capitalize, correctOrder bool) string {
 	if s == "" {
@@ -66,10 +69,11 @@ type Book struct {
 	HasMobi       bool          `json:"hasmobi"`
 	MetaphoneKeys []string      `bson:"metaphone_keys"`
 	SearchWords   []string      `bson:"search_keys"`
+	Added         time.Time     `bson:"date_added"`
 }
 
 // NewBookFromFile creates a book object from a file
-func NewBookFromFile(path string) (bk *Book, err error) {
+func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			bk = nil
@@ -78,15 +82,16 @@ func NewBookFromFile(path string) (bk *Book, err error) {
 	}()
 
 	book := new(Book)
-	book.Title = filepath.Base(path)
-	book.Filename = filepath.Base(path)
-	book.Filepath = path
+	book.Title = filepath.Base(bookpath)
+	book.Filename = filepath.Base(bookpath)
+	book.Filepath = bookpath
+	book.Added = time.Now()
 
-	mobiPath := strings.Replace(path, "epub", "mobi", -1)
+	mobiPath := strings.Replace(bookpath, "epub", "mobi", -1)
 	_, err = os.Stat(mobiPath)
 	book.HasMobi = !os.IsNotExist(err)
 
-	zr, err := zip.OpenReader(path)
+	zr, err := zip.OpenReader(bookpath)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +126,7 @@ func NewBookFromFile(path string) (bk *Book, err error) {
 	if err != nil {
 		return nil, err
 	}
-	book.Title = filepath.Base(path)
+	book.Title = filepath.Base(bookpath)
 	for _, e := range opf.FindElements("//title") {
 		book.Title = e.Text()
 		break
@@ -145,7 +150,40 @@ func NewBookFromFile(path string) (bk *Book, err error) {
 
 	book.Hash = hashBook(book.Author, book.Title)
 
+	if rename {
+		newBookPath := path.Join(baseDir, getOrganizedBookPath(book))
+		if bookpath != newBookPath {
+			baseDir := filepath.Dir(newBookPath)
+			err := os.MkdirAll(baseDir, 0755)
+			if err == nil {
+				os.Rename(bookpath, newBookPath)
+				book.Filepath = newBookPath
+				book.Filename = filepath.Base(newBookPath)
+			}
+			fmt.Println(newBookPath)
+		}
+	}
+
 	return book, nil
+}
+
+func getOrganizedBookPath(b *Book) string {
+	title := b.Title
+	author := b.Author
+	author = filenameSafe.ReplaceAllString(author, "")
+	title = filenameSafe.ReplaceAllString(title, "")
+	if len(title) > 35 {
+		title = title[:30]
+	}
+	title = strings.TrimSuffix(title, " ")
+	firstChar := author[0:1]
+	parts := strings.Split(author, " ")
+	firstChar = parts[len(parts)-1][0:1]
+	formatted := fmt.Sprintf("%s/%s/%s-%s.epub", firstChar, author, author, title)
+	formatted = strings.Replace(formatted, " ", "_", -1)
+	formatted = strings.Replace(formatted, "__", "_", -1)
+
+	return formatted
 }
 
 // BookList is a list of books
