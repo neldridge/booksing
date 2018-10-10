@@ -37,9 +37,9 @@ export default {
       var vm = this;
       axios
         .get("/book.json", {
-            params: {
-              hash: vm.hash
-            }
+          params: {
+            hash: vm.hash
+          }
         })
         .then(function(response) {
           vm.book = response.data;

@@ -141,35 +141,33 @@ export default {
       var vm = this;
       this.converting = true;
       const params = new URLSearchParams();
-      params.append('hash', hash);
-        axios
-          .post("/convert/", params)
-          .then(function(response) {
-            vm.getBooks();
-            console.log(response);
-            vm.converting = false;
-          })
-          .catch(function(error) {
-            vm.converting = false;
-            console.log(error);
-          });
-
+      params.append("hash", hash);
+      axios
+        .post("/convert/", params)
+        .then(function(response) {
+          vm.getBooks();
+          console.log(response);
+          vm.converting = false;
+        })
+        .catch(function(error) {
+          vm.converting = false;
+          console.log(error);
+        });
     },
     deleteBook: function(hash) {
       var vm = this;
       const params = new URLSearchParams();
-      params.append('hash', hash);
-        axios
-          .post("/delete/", params)
-          .then(function(response) {
-            vm.toggleModal(hash);
-            vm.getBooks();
-          })
-          .catch(function(error) {
-            vm.converting = false;
-            console.log(error);
-          });
-
+      params.append("hash", hash);
+      axios
+        .post("/delete/", params)
+        .then(function(response) {
+          vm.toggleModal(hash);
+          vm.getBooks();
+        })
+        .catch(function(error) {
+          vm.converting = false;
+          console.log(error);
+        });
     },
     toggleSettings: function(hash) {
       var modal = document.getElementById("settings");
@@ -185,9 +183,9 @@ export default {
         var vm = this;
         vm.searchDone = false;
         vm.statusMessage = "getting results";
-        var uri = "/books.json"
+        var uri = "/search";
         if (this.searchstring == "/dups") {
-          uri = "/duplicates.json"
+          uri = "/duplicates.json";
         }
         axios
           .get(uri, {
@@ -199,7 +197,9 @@ export default {
           .then(function(response) {
             vm.books = response.data.books;
             vm.total = response.data.total;
-            document.title = `booksing - ${vm.total} books available for searching`
+            document.title = `booksing - ${
+              vm.total
+            } books available for searching`;
             vm.searchDone = true;
           })
           .catch(function(error) {
@@ -226,7 +226,7 @@ export default {
           vm.refreshButtonText = "refresh";
           console.log(error);
         });
-    },
+    }
   }
 };
 </script>
