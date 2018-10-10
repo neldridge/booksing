@@ -84,9 +84,10 @@ func main() {
 	app.createIndices()
 
 	http.HandleFunc("/refresh", app.refreshBooks())
-	http.HandleFunc("/books.json", app.getBooks())
+	http.HandleFunc("/search", app.getBooks())
 	http.HandleFunc("/duplicates.json", app.getDuplicates())
 	http.HandleFunc("/book.json", app.getBook())
+	http.HandleFunc("/exists", app.bookPresent())
 	http.HandleFunc("/convert/", app.convertBook())
 	http.HandleFunc("/delete/", app.deleteBook())
 	http.HandleFunc("/download/", app.downloadBook())
@@ -168,6 +169,20 @@ func (app booksingApp) downloadBook() http.HandlerFunc {
 
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", path.Base(book.Filepath)))
 		http.ServeFile(w, r, book.Filepath)
+	}
+}
+
+func (app booksingApp) bookPresent() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		author := r.URL.Query().Get("author")
+		title := r.URL.Query().Get("title")
+		hash := hashBook(author, title)
+
+		var book Book
+		err := app.books.Find(bson.M{"hash": hash}).One(&book)
+		found := err == nil
+
+		json.NewEncoder(w).Encode(map[string]bool{"found": found})
 	}
 }
 
