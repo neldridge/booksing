@@ -6,3 +6,4 @@ booksing
 bookdump/*
 dist/*
 web/node_modules/*
+testdata/odd-collection/*

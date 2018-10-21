@@ -124,6 +124,11 @@ func (app booksingApp) createIndices() error {
 			Unique:   false,
 			DropDups: false,
 		},
+		mgo.Index{
+			Key:      []string{"language"},
+			Unique:   false,
+			DropDups: false,
+		},
 	}
 	for _, index := range indices {
 		err := app.books.EnsureIndex(index)
@@ -319,7 +324,7 @@ func (app booksingApp) filterBooks(filter string, limit int, exact bool) []Book 
 	var books []Book
 	var iter *mgo.Iter
 	if filter == "" {
-		iter = app.books.Find(nil).Limit(limit).Iter()
+		iter = app.books.Find(bson.M{"language": "nl"}).Sort("-date_added").Limit(limit).Iter()
 	} else if exact {
 		s := strings.Split(filter, " ")
 		iter = app.books.Find(bson.M{"search_keys": bson.M{"$all": s}}).Limit(limit).Sort("author", "title").Iter()
@@ -338,6 +343,7 @@ func (app booksingApp) filterBooks(filter string, limit int, exact bool) []Book 
 func (app booksingApp) refreshBooks() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Println("starting refresh of booklist")
+		app.createIndices()
 		matches, err := zglob.Glob(filepath.Join(app.bookDir, "/**/*.epub"))
 		if err != nil {
 			fmt.Println("Scan could not complete: ", err.Error())

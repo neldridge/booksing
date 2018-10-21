@@ -1,9 +1,7 @@
 import Vue from 'vue'
 import Router from 'vue-router'
 import Home from './components/Home.vue'
-import About from './components/About.vue'
-import BookInfo from './components/BookInfo.vue'
-import Settings from './components/Settings.vue'
+import AdvancedSearch from './components/AdvancedSearch.vue'
 
 Vue.use(Router)
 
@@ -15,20 +13,9 @@ export default new Router({
       component: Home
     },
     {
-      path: '/about',
+      path: '/new',
       name: 'about',
-      component: About
+      component: AdvancedSearch
     },
-    {
-      path: '/settings',
-      name: 'Settings',
-      component: Settings
-    },
-    {
-      path: '/book/:hash',
-      name: 'BookInfo',
-      component: BookInfo,
-      props: true
-    }
   ]
 })
