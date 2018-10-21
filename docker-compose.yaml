@@ -11,5 +11,7 @@ services:
     environment:
       - MONGO_HOST=mongodb
       - BOOK_DIR=/books
+      - REORGANIZE_BOOKS=true
+      - ALLOW_DELETES=true
     ports:
      - 7132:7132

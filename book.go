@@ -23,53 +23,20 @@ var yearRemove = regexp.MustCompile(`\((1|2)[0-9]{3}\)`)
 var drukRemove = regexp.MustCompile(`(?i)/ druk [0-9]+`)
 var filenameSafe = regexp.MustCompile("[^a-zA-Z0-9 -]+")
 
-func fix(s string, capitalize, correctOrder bool) string {
-	if s == "" {
-		return "Unknown"
-	}
-	if capitalize {
-		s = strings.Title(strings.ToLower(s))
-		s = strings.Replace(s, "'S", "'s", -1)
-	}
-	if correctOrder && strings.Contains(s, ",") {
-		sParts := strings.Split(s, ",")
-		if len(sParts) == 2 {
-			s = strings.TrimSpace(sParts[1]) + " " + strings.TrimSpace(sParts[0])
-		}
-	}
-
-	s = yearRemove.ReplaceAllString(s, "")
-	s = drukRemove.ReplaceAllString(s, "")
-	s = strings.Replace(s, ".", " ", -1)
-	s = strings.Replace(s, "  ", " ", -1)
-	s = strings.TrimSpace(s)
-
-	return strings.Map(func(in rune) rune {
-		switch in {
-		case '“', '‹', '”', '›':
-			return '"'
-		case '_':
-			return ' '
-		case '‘', '’':
-			return '\''
-		}
-		return in
-	}, s)
-}
-
 // Book represents a book
 type Book struct {
 	ID            bson.ObjectId `json:"id"`
 	Hash          string        `json:"hash"`
 	Title         string        `json:"title"`
 	Author        string        `json:"author"`
+	Language      string        `json:"language"`
 	Description   string        `json:"description"`
 	Filepath      string        `json:"filepath"`
 	Filename      string        `json:"filename"`
 	HasMobi       bool          `json:"hasmobi"`
 	MetaphoneKeys []string      `bson:"metaphone_keys"`
 	SearchWords   []string      `bson:"search_keys"`
-	Added         time.Time     `bson:"date_added"`
+	Added         time.Time     `bson:"date_added" json:"date_added"`
 }
 
 // NewBookFromFile creates a book object from a file
@@ -81,11 +48,23 @@ func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, er
 		}
 	}()
 
+	f, err := os.Open(bookpath)
+	if err != nil {
+		return nil, err
+	}
+
+	fi, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+
 	book := new(Book)
+	book.Language = ""
 	book.Title = filepath.Base(bookpath)
 	book.Filename = filepath.Base(bookpath)
 	book.Filepath = bookpath
-	book.Added = time.Now()
+	book.Added = fi.ModTime()
 
 	mobiPath := strings.Replace(bookpath, "epub", "mobi", -1)
 	_, err = os.Stat(mobiPath)
@@ -139,9 +118,14 @@ func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, er
 		book.Description = e.Text()
 		break
 	}
+	for _, e := range opf.FindElements("//language") {
+		book.Language = e.Text()
+		break
+	}
 
 	book.Title = fix(book.Title, true, false)
 	book.Author = fix(book.Author, true, true)
+	book.Language = fixLang(book.Language)
 	book.Description = sanitize.HTML(book.Description)
 
 	searchWords := book.Title + " " + book.Author
@@ -211,4 +195,78 @@ func (l *BookList) Filtered(filterer func(a Book) bool) *BookList {
 	}
 
 	return &filtered
+}
+
+func fixLang(s string) string {
+	s = strings.ToLower(s)
+
+	switch s {
+	case "nld":
+		s = "nl"
+	case "dutch":
+		s = "nl"
+	case "nederlands":
+		s = "nl"
+	case "nederland":
+		s = "nl"
+	case "nl-nl":
+		s = "nl"
+
+	case "deutsch":
+		s = "de"
+	case "deutsche":
+		s = "de"
+	case "duits":
+		s = "de"
+	case "german":
+		s = "de"
+	case "de-de":
+		s = "de"
+
+	case "english":
+		s = "en"
+	case "engels":
+		s = "en"
+	case "uk":
+		s = "en"
+	case "en-en":
+		s = "en"
+	case "us":
+		s = "en"
+	}
+	return s
+}
+
+func fix(s string, capitalize, correctOrder bool) string {
+	if s == "" {
+		return "Unknown"
+	}
+	if capitalize {
+		s = strings.Title(strings.ToLower(s))
+		s = strings.Replace(s, "'S", "'s", -1)
+	}
+	if correctOrder && strings.Contains(s, ",") {
+		sParts := strings.Split(s, ",")
+		if len(sParts) == 2 {
+			s = strings.TrimSpace(sParts[1]) + " " + strings.TrimSpace(sParts[0])
+		}
+	}
+
+	s = yearRemove.ReplaceAllString(s, "")
+	s = drukRemove.ReplaceAllString(s, "")
+	s = strings.Replace(s, ".", " ", -1)
+	s = strings.Replace(s, "  ", " ", -1)
+	s = strings.TrimSpace(s)
+
+	return strings.Map(func(in rune) rune {
+		switch in {
+		case '“', '‹', '”', '›':
+			return '"'
+		case '_':
+			return ' '
+		case '‘', '’':
+			return '\''
+		}
+		return in
+	}, s)
 }
