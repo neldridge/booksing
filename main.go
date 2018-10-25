@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/globalsign/mgo"
 	zglob "github.com/mattn/go-zglob"
+	log "github.com/sirupsen/logrus"
 )
 
 type booksingApp struct {
@@ -348,6 +348,14 @@ func (app booksingApp) filterBooks(filter string, limit int, exact bool) []Book 
 func (app booksingApp) refreshBooks() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Println("starting refresh of booklist")
+		clean := r.URL.Query().Get("clean")
+		if clean == "force" {
+			info, err := app.books.RemoveAll(nil)
+			if err != nil {
+				log.WithField("err", err).Warning("clearing collection failed")
+			}
+			log.WithField("removed", info.Removed).Warning("documents were removed")
+		}
 		app.createIndices()
 		matches, err := zglob.Glob(filepath.Join(app.bookDir, "/**/*.epub"))
 		if err != nil {

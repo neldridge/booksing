@@ -22,7 +22,7 @@ import (
 var yearRemove = regexp.MustCompile(`\((1|2)[0-9]{3}\)`)
 var drukRemove = regexp.MustCompile(`(?i)/ druk [0-9]+`)
 var filenameSafe = regexp.MustCompile("[^a-zA-Z0-9 -]+")
-var version = 1
+var version uint8 = 1
 
 // Book represents a book
 type Book struct {
@@ -62,6 +62,7 @@ func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, er
 	}
 
 	book := new(Book)
+	book.BooksingVersion = version
 	book.Language = ""
 	book.Title = filepath.Base(bookpath)
 	book.Filename = filepath.Base(bookpath)
