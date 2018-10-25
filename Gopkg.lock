@@ -40,6 +40,14 @@
   version = "v1.2.4"
 
 [[projects]]
+  digest = "1:6a874e3ddfb9db2b42bd8c85b6875407c702fa868eed20634ff489bc896ccfd3"
+  name = "github.com/konsorten/go-windows-terminal-sequences"
+  packages = ["."]
+  pruneopts = ""
+  revision = "5c8c8bd35d3832f5d134ae1e1e375b69a4d25242"
+  version = "v1.0.1"
+
+[[projects]]
   branch = "master"
   digest = "1:c186d98ef4526297afabdf84bb02076ea2c78e3b52e88ebdac58325f4f923b8b"
   name = "github.com/mattn/go-zglob"
@@ -49,6 +57,22 @@
   ]
   pruneopts = ""
   revision = "2ea3427bfa539cca900ca2768d8663ecc8a708c1"
+
+[[projects]]
+  digest = "1:5f48b818f16848d05cf74f4cbdd0cbe9e0dcddb3c459b4c510c6e2c8e1b4dff1"
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  pruneopts = ""
+  revision = "ad15b42461921f1fb3529b058c6786c6a45d5162"
+  version = "v1.1.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:2c9adb62791dc0a28d0058cdee22abf578f33a88dccf8dd4ced84e23b11cd560"
+  name = "golang.org/x/crypto"
+  packages = ["ssh/terminal"]
+  pruneopts = ""
+  revision = "85e1b3f9139abd58575d728a509643924e3b2ebf"
 
 [[projects]]
   branch = "master"
@@ -62,11 +86,27 @@
   revision = "f04abc6bdfa7a0171a8a0c9fd2ada9391044d056"
 
 [[projects]]
+  branch = "master"
+  digest = "1:22febfca49d8fbdeebfc021cceb3851314aa894a1fb2d8bfb316292cd1a1f951"
+  name = "golang.org/x/sys"
+  packages = [
+    "unix",
+    "windows",
+  ]
+  pruneopts = ""
+  revision = "d989b31c87461dc8ab2f1cac6792814e27fadea9"
+
+[[projects]]
   digest = "1:5acd3512b047305d49e8763eef7ba423901e85d5dd2fd1e71778a0ea8de10bd4"
   name = "golang.org/x/text"
   packages = [
+    "internal/gen",
+    "internal/triegen",
+    "internal/ucd",
     "runes",
     "transform",
+    "unicode/cldr",
+    "unicode/norm",
   ]
   pruneopts = ""
   revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
@@ -93,8 +133,10 @@
     "github.com/globalsign/mgo/bson",
     "github.com/kennygrant/sanitize",
     "github.com/mattn/go-zglob",
+    "github.com/sirupsen/logrus",
     "golang.org/x/text/runes",
     "golang.org/x/text/transform",
+    "golang.org/x/text/unicode/norm",
     "golang.org/x/tools/godoc/vfs/zipfs",
   ]
   solver-name = "gps-cdcl"
