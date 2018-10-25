@@ -4,15 +4,23 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/antzucaro/matchr"
+	"golang.org/x/text/runes"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 )
 
 var onlyLower = regexp.MustCompile("[^a-z]+")
 var leadingNumbers = regexp.MustCompile("^ *[0-9]+")
 var betweenParentheses = regexp.MustCompile(`\(.*\)`)
+var betweenBockHooks = regexp.MustCompile(`\[.*\]`)
+
 var leadingZeroes = regexp.MustCompile(`^ *(0)([0-9]+) `)
 var alphaNumeric = regexp.MustCompile(`[^a-z0-9]+`)
+
+//var year = regexp.MustCompile(`(19[0-9]{2})|(20[0-9]{2})`)
 
 var uselessWords = []string{
 	"le", "la", "et",
@@ -22,6 +30,7 @@ var uselessWords = []string{
 
 func hashBook(author, title string) string {
 	author = strings.ToLower(author)
+	author = strings.Replace(author, "-", " ", -1)
 	title = strings.ToLower(title)
 
 	authorParts := strings.Split(author, " ")
@@ -37,11 +46,16 @@ func hashBook(author, title string) string {
 	//concatenate to half further actions
 	title = lastName + " " + title
 
+	title = removeAccents(title)
+
 	//make sure no whitespace is on either end
 	title = strings.TrimSpace(title)
 
 	//remove everything between parenthesis
 	title = betweenParentheses.ReplaceAllString(title, " ")
+
+	//remove everything between blockhooks
+	title = betweenBockHooks.ReplaceAllString(title, " ")
 
 	//remove ': a novel'
 	title = strings.Replace(title, ": a novel", " ", -1)
@@ -61,6 +75,15 @@ func hashBook(author, title string) string {
 	return title
 }
 
+func removeAccents(in string) string {
+	t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+	s, _, err := transform.String(t, in)
+	if err != nil {
+		return in
+	}
+	return s
+}
+
 func generalizer(s string) string {
 	s = " " + s + " "
 	s = onlyLower.ReplaceAllString(strings.ToLower(s), " ")
@@ -77,7 +100,7 @@ func getLowercasedSlice(s string) []string {
 	var returnParts []string
 	parts := strings.Split(s, " ")
 	for _, part := range parts {
-		cleaned := onlyLower.ReplaceAllString(strings.ToLower(part), "")
+		cleaned := alphaNumeric.ReplaceAllString(strings.ToLower(part), "")
 		returnParts = append(returnParts, cleaned)
 	}
 

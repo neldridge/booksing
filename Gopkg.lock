@@ -62,6 +62,17 @@
   revision = "f04abc6bdfa7a0171a8a0c9fd2ada9391044d056"
 
 [[projects]]
+  digest = "1:5acd3512b047305d49e8763eef7ba423901e85d5dd2fd1e71778a0ea8de10bd4"
+  name = "golang.org/x/text"
+  packages = [
+    "runes",
+    "transform",
+  ]
+  pruneopts = ""
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
+  version = "v0.3.0"
+
+[[projects]]
   branch = "master"
   digest = "1:bce40c2689432c3bcf98defee271f3f62f32483c6358d7d19e4c27498b226b76"
   name = "golang.org/x/tools"
@@ -82,6 +93,8 @@
     "github.com/globalsign/mgo/bson",
     "github.com/kennygrant/sanitize",
     "github.com/mattn/go-zglob",
+    "golang.org/x/text/runes",
+    "golang.org/x/text/transform",
     "golang.org/x/tools/godoc/vfs/zipfs",
   ]
   solver-name = "gps-cdcl"
