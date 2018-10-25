@@ -129,6 +129,11 @@ func (app booksingApp) createIndices() error {
 			Unique:   false,
 			DropDups: false,
 		},
+		mgo.Index{
+			Key:      []string{"booksing_version"},
+			Unique:   false,
+			DropDups: false,
+		},
 	}
 	for _, index := range indices {
 		err := app.books.EnsureIndex(index)
