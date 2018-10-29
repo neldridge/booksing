@@ -185,6 +185,8 @@ func (app booksingApp) bookPresent() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		author := r.URL.Query().Get("author")
 		title := r.URL.Query().Get("title")
+		title = fix(title, true, false)
+		author = fix(author, true, true)
 		hash := hashBook(author, title)
 
 		var book Book
