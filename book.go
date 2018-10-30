@@ -147,7 +147,6 @@ func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, er
 				book.Filepath = newBookPath
 				book.Filename = filepath.Base(newBookPath)
 			}
-			fmt.Println(newBookPath)
 		}
 	}
 
