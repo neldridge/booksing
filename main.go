@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log/syslog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo/bson"
+	lSyslog "github.com/sirupsen/logrus/hooks/syslog"
 
 	"github.com/globalsign/mgo"
 	zglob "github.com/mattn/go-zglob"
@@ -50,6 +52,15 @@ type bookConvertRequest struct {
 }
 
 func main() {
+	syslogServer := os.Getenv("SYSLOG_REMOTE")
+	if syslogServer != "" {
+		hook, err := lSyslog.NewSyslogHook("udp", syslogServer, syslog.LOG_INFO, "")
+		if err == nil {
+			log.SetFormatter(&log.JSONFormatter{})
+			log.AddHook(&AddSourceHook{})
+			log.AddHook(hook)
+		}
+	}
 	envDeletes := os.Getenv("ALLOW_DELETES")
 	allowDeletes := envDeletes != "" && strings.ToLower(envDeletes) == "true"
 	envOrganize := os.Getenv("REORGANIZE_BOOKS")
@@ -62,16 +73,15 @@ func main() {
 	if mongoHost == "" {
 		mongoHost = "localhost"
 	}
-	fmt.Println("Connecting to", mongoHost)
+	log.WithField("address", mongoHost).Info("Connecting to mongodb")
 	conn, err := mgo.Dial(mongoHost)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.WithField("err", err).Error("Could not connect to mongodb")
 		return
 	}
-	fmt.Println("Connected")
 	session := conn.DB("booksing")
 	if err != nil {
-		fmt.Println(err.Error())
+		log.WithField("err", err).Error("Could not create booksing session")
 		return
 	}
 	app := booksingApp{
@@ -92,7 +102,7 @@ func main() {
 	http.HandleFunc("/download/", app.downloadBook())
 	http.Handle("/", http.FileServer(assetFS()))
 
-	log.Println("Please visit http://localhost:7132 to view booksing")
+	log.Info("booksing is now running")
 	log.Fatal(http.ListenAndServe(":7132", nil))
 }
 
@@ -138,8 +148,10 @@ func (app booksingApp) createIndices() error {
 	for _, index := range indices {
 		err := app.books.EnsureIndex(index)
 		if err != nil {
-			fmt.Println(index.Key)
-			fmt.Println(err)
+			log.WithFields(log.Fields{
+				"index": index.Key,
+				"err":   err,
+			}).Error("Could not create index")
 		}
 	}
 
@@ -151,14 +163,16 @@ func (app booksingApp) downloadBook() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fileName := r.URL.Query().Get("book")
 		toMobi := strings.HasSuffix(fileName, ".mobi")
-		fmt.Println("trying to download ", fileName)
 		var book Book
 		if toMobi {
 			fileName = strings.Replace(fileName, ".mobi", ".epub", 1)
 		}
 		err := app.books.Find(bson.M{"filename": fileName}).One(&book)
 		if err != nil {
-			fmt.Println(err)
+			log.WithFields(log.Fields{
+				"err":      err,
+				"filename": fileName,
+			}).Error("could not find book")
 			return
 		}
 		if toMobi {
@@ -175,6 +189,11 @@ func (app booksingApp) downloadBook() http.HandlerFunc {
 			Timestamp: time.Now(),
 		}
 		err = app.downloads.Insert(dl)
+		log.WithFields(log.Fields{
+			"user": r.Header.Get("x-auth-user"),
+			"ip":   ip,
+			"book": book.Hash,
+		}).Info("book was downloaded")
 
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", path.Base(book.Filepath)))
 		http.ServeFile(w, r, book.Filepath)
@@ -213,26 +232,26 @@ func (app booksingApp) convertBook() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := r.ParseForm()
 		if err != nil {
-			fmt.Println(err)
+			log.WithField("err", err).Error("could not parse form data")
 			return
 		}
 		hash := r.Form.Get("hash")
-		fmt.Println(hash)
 		var book Book
 		err = app.books.Find(bson.M{"hash": hash}).One(&book)
 		if err != nil {
 			return
 		}
+		log.WithField("book", book.Filepath).Debug("converting to mobi")
 		mobiPath := strings.Replace(book.Filepath, ".epub", ".mobi", 1)
 		cmd := exec.Command("ebook-convert", book.Filepath, mobiPath)
-		log.Printf("Running command and waiting for it to finish...")
-		stdoutStderr, err := cmd.CombinedOutput()
+
+		_, err = cmd.CombinedOutput()
 		if err != nil {
-			log.Printf("Command finished with error: %v", err)
-			fmt.Println(stdoutStderr)
+			log.WithField("err", err).Error("Command finished with error")
 		} else {
 			book.HasMobi = true
 			app.books.Update(bson.M{"hash": hash}, book)
+			log.WithField("book", book.Filepath).Debug("conversion successful")
 		}
 		json.NewEncoder(w).Encode(book)
 	}
@@ -250,7 +269,7 @@ func (app booksingApp) getDuplicates() http.HandlerFunc {
 		var book Book
 		numResults, err := app.books.Count()
 		if err != nil {
-			log.Println(err)
+			log.WithField("err", err).Error("could not get total book count")
 		}
 		resp.TotalCount = numResults
 
@@ -276,7 +295,7 @@ func (app booksingApp) getDuplicates() http.HandlerFunc {
 
 		err = iter.All(&dupes)
 		if err != nil {
-			fmt.Println(err)
+			log.WithField("err", err).Error("Could not get duplicates")
 		}
 
 		for _, dup := range dupes {
@@ -303,7 +322,14 @@ func (app booksingApp) getBooks() http.HandlerFunc {
 		var limit int
 		numString := r.URL.Query().Get("results")
 		filter := strings.ToLower(r.URL.Query().Get("filter"))
+		filter = strings.TrimSpace(filter)
 		limit = 1000
+
+		log.WithFields(log.Fields{
+			"user":   r.Header.Get("x-auth-user"),
+			"filter": filter,
+		}).Info("user initiated search")
+
 		if a, err := strconv.Atoi(numString); err == nil {
 			if a > 0 && a < 1000 {
 				limit = a
@@ -311,7 +337,7 @@ func (app booksingApp) getBooks() http.HandlerFunc {
 		}
 		numResults, err := app.books.Count()
 		if err != nil {
-			log.Println(err)
+			log.WithField("err", err).Error("could not get total book count")
 		}
 		resp.TotalCount = numResults
 
@@ -341,7 +367,7 @@ func (app booksingApp) filterBooks(filter string, limit int, exact bool) []Book 
 	}
 	err := iter.All(&books)
 	if err != nil {
-		log.Println(err.Error())
+		log.WithField("err", err).Error("filtering books failed")
 		return []Book{}
 	}
 	return books
@@ -349,7 +375,7 @@ func (app booksingApp) filterBooks(filter string, limit int, exact bool) []Book 
 
 func (app booksingApp) refreshBooks() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Println("starting refresh of booklist")
+		log.Info("starting refresh of booklist")
 		clean := r.URL.Query().Get("clean")
 		if clean == "force" {
 			info, err := app.books.RemoveAll(nil)
@@ -361,10 +387,13 @@ func (app booksingApp) refreshBooks() http.HandlerFunc {
 		app.createIndices()
 		matches, err := zglob.Glob(filepath.Join(app.bookDir, "/**/*.epub"))
 		if err != nil {
-			fmt.Println("Scan could not complete: ", err.Error())
+			log.WithField("err", err).Error("glob of all books failed")
 			return
 		}
-		log.Println("found", len(matches), "epubs in ", app.bookDir)
+		log.WithFields(log.Fields{
+			"total":   len(matches),
+			"bookdir": app.bookDir,
+		}).Info("located books on filesystem")
 
 		bookQ := make(chan string, len(matches))
 		resultQ := make(chan int)
@@ -380,11 +409,14 @@ func (app booksingApp) refreshBooks() http.HandlerFunc {
 		for a := 0; a < len(matches); a++ {
 			<-resultQ
 			if a > 0 && a%500 == 0 {
-				log.Println("Scraped", a, "books so far")
+				log.WithFields(log.Fields{
+					"processed": a,
+					"total":     len(matches),
+				}).Info("processing books")
 			}
 		}
 
-		log.Println("finished refresh of booklist")
+		log.Info("finished refresh of booklist")
 	}
 }
 
@@ -400,7 +432,10 @@ func (app booksingApp) bookParser(bookQ chan string, resultQ chan int) {
 		book, err := NewBookFromFile(filename, app.allowOrganize, app.bookDir)
 		if err != nil {
 			if app.allowDeletes {
-				fmt.Println("Deleting ", filename)
+				log.WithFields(log.Fields{
+					"file":   filename,
+					"reason": "invalid",
+				}).Info("Deleting book")
 				os.Remove(filename)
 			}
 			resultQ <- 1
@@ -410,7 +445,10 @@ func (app booksingApp) bookParser(bookQ chan string, resultQ chan int) {
 		err = app.books.Insert(book)
 		if err != nil && mgo.IsDup(err) {
 			if app.allowDeletes {
-				fmt.Println("Deleting ", filename)
+				log.WithFields(log.Fields{
+					"file":   filename,
+					"reason": "duplicate",
+				}).Info("Deleting book")
 				os.Remove(filename)
 			}
 		}

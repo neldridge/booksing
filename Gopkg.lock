@@ -19,7 +19,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:ff0a3cc34addcbd669622ba0dc8231d4eff046eec7b3eae1ccafd06a901279d3"
+  digest = "1:e9ffb9315dce0051beb757d0f0fc25db57c4da654efc4eada4ea109c2d9da815"
   name = "github.com/globalsign/mgo"
   packages = [
     ".",
@@ -29,7 +29,7 @@
     "internal/scram",
   ]
   pruneopts = ""
-  revision = "1ca0a4f7cbcbe61c005d1bd43fdd8bb8b71df6bc"
+  revision = "eeefdecb41b842af6dc652aaea4026e8403e62df"
 
 [[projects]]
   digest = "1:717859f53ed0a55fab7284704ecaac4b0d292f4caca5ceaa2afd512be49189ea"
@@ -61,40 +61,43 @@
 [[projects]]
   digest = "1:5f48b818f16848d05cf74f4cbdd0cbe9e0dcddb3c459b4c510c6e2c8e1b4dff1"
   name = "github.com/sirupsen/logrus"
-  packages = ["."]
+  packages = [
+    ".",
+    "hooks/syslog",
+  ]
   pruneopts = ""
   revision = "ad15b42461921f1fb3529b058c6786c6a45d5162"
   version = "v1.1.1"
 
 [[projects]]
   branch = "master"
-  digest = "1:2c9adb62791dc0a28d0058cdee22abf578f33a88dccf8dd4ced84e23b11cd560"
+  digest = "1:efb97ebbd73c3a7068579327f5d98a17c09f6d8caf1fa3212c506e8bb78126b5"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
   pruneopts = ""
-  revision = "85e1b3f9139abd58575d728a509643924e3b2ebf"
+  revision = "4d3f4d9ffa16a13f451c3b2999e9c49e9750bf06"
 
 [[projects]]
   branch = "master"
-  digest = "1:6846191f608c0dd6109f37ca46b784f9630191ff13f86ae974135c05a4c92971"
+  digest = "1:41055845ee2a3f0b0fbf94f12b7a6c5322ae66c166d192e38156e0d63a6e2993"
   name = "golang.org/x/net"
   packages = [
     "html",
     "html/atom",
   ]
   pruneopts = ""
-  revision = "f04abc6bdfa7a0171a8a0c9fd2ada9391044d056"
+  revision = "c44066c5c816ec500d459a2a324a753f78531ae0"
 
 [[projects]]
   branch = "master"
-  digest = "1:22febfca49d8fbdeebfc021cceb3851314aa894a1fb2d8bfb316292cd1a1f951"
+  digest = "1:2667800887f4161b5b1f49d3065204a82f974d1b857c00d7e450a5167477071f"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "d989b31c87461dc8ab2f1cac6792814e27fadea9"
+  revision = "d69651ed3497faee15a5363a89578e9991f6d5e2"
 
 [[projects]]
   digest = "1:5acd3512b047305d49e8763eef7ba423901e85d5dd2fd1e71778a0ea8de10bd4"
@@ -114,14 +117,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:bce40c2689432c3bcf98defee271f3f62f32483c6358d7d19e4c27498b226b76"
+  digest = "1:9cd5884d84fbc7a31870477ed57022658b9fbb96d558a042c9b5ed2f14b7d7fe"
   name = "golang.org/x/tools"
   packages = [
     "godoc/vfs",
     "godoc/vfs/zipfs",
   ]
   pruneopts = ""
-  revision = "9eb9690e392a79b547be16fa2fa66f1710ed3035"
+  revision = "a0a13e073c7bae39af55369bcd1c2dc7ebb88ede"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -134,6 +137,7 @@
     "github.com/kennygrant/sanitize",
     "github.com/mattn/go-zglob",
     "github.com/sirupsen/logrus",
+    "github.com/sirupsen/logrus/hooks/syslog",
     "golang.org/x/text/runes",
     "golang.org/x/text/transform",
     "golang.org/x/text/unicode/norm",
