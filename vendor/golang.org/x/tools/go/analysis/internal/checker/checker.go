@@ -6,7 +6,6 @@ package checker
 
 import (
 	"bytes"
-	"context"
 	"encoding/gob"
 	"encoding/json"
 	"flag"
@@ -151,13 +150,39 @@ func load(patterns []string, allSyntax bool) ([]*packages.Package, error) {
 	return initial, err
 }
 
-// Analyze applies an analysis to a package (and their dependencies if
-// necessary) and returns the graph of results.
+// TestAnalyzer applies an analysis to a set of packages (and their
+// dependencies if necessary) and returns the results.
 //
-// It is exposed for use in testing.
-func Analyze(pkg *packages.Package, a *analysis.Analyzer) (*analysis.Pass, []analysis.Diagnostic, error) {
-	act := analyze([]*packages.Package{pkg}, []*analysis.Analyzer{a})[0]
-	return act.pass, act.diagnostics, act.err
+// Facts about pkg are returned in a map keyed by object; package facts
+// have a nil key.
+//
+// This entry point is used only by analysistest.
+func TestAnalyzer(a *analysis.Analyzer, pkgs []*packages.Package) []*TestAnalyzerResult {
+	var results []*TestAnalyzerResult
+	for _, act := range analyze(pkgs, []*analysis.Analyzer{a}) {
+		facts := make(map[types.Object][]analysis.Fact)
+		for key, fact := range act.objectFacts {
+			if key.obj.Pkg() == act.pass.Pkg {
+				facts[key.obj] = append(facts[key.obj], fact)
+			}
+		}
+		for key, fact := range act.packageFacts {
+			if key.pkg == act.pass.Pkg {
+				facts[nil] = append(facts[nil], fact)
+			}
+		}
+
+		results = append(results, &TestAnalyzerResult{act.pass, act.diagnostics, facts, act.result, act.err})
+	}
+	return results
+}
+
+type TestAnalyzerResult struct {
+	Pass        *analysis.Pass
+	Diagnostics []analysis.Diagnostic
+	Facts       map[types.Object][]analysis.Fact
+	Result      interface{}
+	Err         error
 }
 
 func analyze(pkgs []*packages.Package, analyzers []*analysis.Analyzer) []*action {
@@ -189,7 +214,7 @@ func analyze(pkgs []*packages.Package, analyzers []*analysis.Analyzer) []*action
 
 			// An analysis that consumes/produces facts
 			// must run on the package's dependencies too.
-			if a.UsesFacts {
+			if len(a.FactTypes) > 0 {
 				paths := make([]string, 0, len(pkg.Imports))
 				for path := range pkg.Imports {
 					paths = append(paths, path)
@@ -296,7 +321,7 @@ func printDiagnostics(roots []*action) {
 		type key struct {
 			token.Position
 			*analysis.Analyzer
-			message, class string
+			message string
 		}
 		seen := make(map[key]bool)
 
@@ -307,19 +332,18 @@ func printDiagnostics(roots []*action) {
 			}
 			if act.isroot {
 				for _, f := range act.diagnostics {
-					class := act.a.Name
-					if f.Category != "" {
-						class += "." + f.Category
-					}
+					// We don't display a.Name/f.Category
+					// as most users don't care.
+
 					posn := act.pkg.Fset.Position(f.Pos)
 
-					k := key{posn, act.a, class, f.Message}
+					k := key{posn, act.a, f.Message}
 					if seen[k] {
 						continue // duplicate
 					}
 					seen[k] = true
 
-					fmt.Printf("%s: [%s] %s\n", posn, class, f.Message)
+					fmt.Fprintf(os.Stderr, "%s: %s\n", posn, f.Message)
 
 					// -c=0: show offending line of code in context.
 					if Context >= 0 {
@@ -327,7 +351,7 @@ func printDiagnostics(roots []*action) {
 						lines := strings.Split(string(data), "\n")
 						for i := posn.Line - Context; i <= posn.Line+Context; i++ {
 							if 1 <= i && i <= len(lines) {
-								fmt.Printf("%d\t%s\n", i, lines[i-1])
+								fmt.Fprintf(os.Stderr, "%d\t%s\n", i, lines[i-1])
 							}
 						}
 					}
@@ -375,7 +399,7 @@ func needFacts(analyzers []*analysis.Analyzer) bool {
 		q = q[1:]
 		if !seen[a] {
 			seen[a] = true
-			if a.UsesFacts {
+			if len(a.FactTypes) > 0 {
 				return true
 			}
 			q = append(q, a.Requires...)
@@ -405,13 +429,13 @@ type action struct {
 }
 
 type objectFactKey struct {
-	types.Object
-	reflect.Type
+	obj types.Object
+	typ reflect.Type
 }
 
 type packageFactKey struct {
-	*types.Package
-	reflect.Type
+	pkg *types.Package
+	typ reflect.Type
 }
 
 func (act *action) String() string {
@@ -442,9 +466,13 @@ func (act *action) execOnce() {
 	// Analyze dependencies.
 	execAll(act.deps)
 
-	ctx, task := trace.NewTask(context.Background(), "exec")
-	defer task.End()
-	trace.Log(ctx, "pass", act.String())
+	// TODO(adonovan): uncomment this during profiling.
+	// It won't build pre-go1.11 but conditional compilation
+	// using build tags isn't warranted.
+	//
+	// ctx, task := trace.NewTask(context.Background(), "exec")
+	// trace.Log(ctx, "pass", act.String())
+	// defer task.End()
 
 	// Record time spent in this node but not its dependencies.
 	// In parallel mode, due to GC/scheduler contention, the
@@ -494,6 +522,7 @@ func (act *action) execOnce() {
 		Analyzer:          act.a,
 		Fset:              act.pkg.Fset,
 		Files:             act.pkg.Syntax,
+		OtherFiles:        act.pkg.OtherFiles,
 		Pkg:               act.pkg.Types,
 		TypesInfo:         act.pkg.TypesInfo,
 		ResultOf:          inputs,
@@ -534,9 +563,9 @@ func inheritFacts(act, dep *action) {
 		// Filter out facts related to objects
 		// that are irrelevant downstream
 		// (equivalently: not in the compiler export data).
-		if !exportedFrom(key.Object, dep.pkg.Types) {
+		if !exportedFrom(key.obj, dep.pkg.Types) {
 			if false {
-				log.Printf("%v: discarding %T fact from %s for %s: %s", act, fact, dep, key.Object, fact)
+				log.Printf("%v: discarding %T fact from %s for %s: %s", act, fact, dep, key.obj, fact)
 			}
 			continue
 		}
@@ -552,7 +581,7 @@ func inheritFacts(act, dep *action) {
 		}
 
 		if false {
-			log.Printf("%v: inherited %T fact for %s: %s", act, fact, key.Object, fact)
+			log.Printf("%v: inherited %T fact for %s: %s", act, fact, key.obj, fact)
 		}
 		act.objectFacts[key] = fact
 	}
@@ -574,7 +603,7 @@ func inheritFacts(act, dep *action) {
 		}
 
 		if false {
-			log.Printf("%v: inherited %T fact for %s: %s", act, fact, key.Package.Path(), fact)
+			log.Printf("%v: inherited %T fact for %s: %s", act, fact, key.pkg.Path(), fact)
 		}
 		act.packageFacts[key] = fact
 	}
@@ -660,7 +689,8 @@ func (act *action) exportObjectFact(obj types.Object, fact analysis.Fact) {
 	act.objectFacts[key] = fact // clobber any existing entry
 	if dbg('f') {
 		objstr := types.ObjectString(obj, (*types.Package).Name)
-		log.Printf("fact %#v on %s", fact, objstr)
+		fmt.Fprintf(os.Stderr, "%s: object %s has fact %s\n",
+			act.pkg.Fset.Position(obj.Pos()), objstr, fact)
 	}
 }
 
@@ -688,7 +718,8 @@ func (act *action) exportPackageFact(fact analysis.Fact) {
 	key := packageFactKey{act.pass.Pkg, factType(fact)}
 	act.packageFacts[key] = fact // clobber any existing entry
 	if dbg('f') {
-		log.Printf("fact %#v on %s", fact, act.pass.Pkg)
+		fmt.Fprintf(os.Stderr, "%s: package %s has fact %s\n",
+			act.pkg.Fset.Position(act.pass.Files[0].Pos()), act.pass.Pkg.Path(), fact)
 	}
 }
 
