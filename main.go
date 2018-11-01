@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log/syslog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo/bson"
+	lSyslog "github.com/sirupsen/logrus/hooks/syslog"
 
 	"github.com/globalsign/mgo"
 	zglob "github.com/mattn/go-zglob"
@@ -50,6 +52,15 @@ type bookConvertRequest struct {
 }
 
 func main() {
+	syslogServer := os.Getenv("SYSLOG_REMOTE")
+	if syslogServer != "" {
+		hook, err := lSyslog.NewSyslogHook("udp", syslogServer, syslog.LOG_INFO, "")
+		if err == nil {
+			log.SetFormatter(&log.JSONFormatter{})
+			log.AddHook(&AddSourceHook{})
+			log.AddHook(hook)
+		}
+	}
 	envDeletes := os.Getenv("ALLOW_DELETES")
 	allowDeletes := envDeletes != "" && strings.ToLower(envDeletes) == "true"
 	envOrganize := os.Getenv("REORGANIZE_BOOKS")
