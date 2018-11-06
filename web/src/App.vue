@@ -6,9 +6,23 @@
   </section>
 </template>
 
-<style>
+<style lang="scss">
+@charset "utf-8";
+
+// Import Bulma's core
+@import "~bulma/sass/utilities/_all";
+
+/// Custom theme here
+
+// Import Bulma and Buefy styles
+@import "~bulma";
+@import "~buefy/src/scss/buefy";
+
+// Import icons
+@import "~@mdi/font/css/materialdesignicons.min.css";
+
 #app {
-  font-family: 'Avenir', Helvetica, Arial, sans-serif;
+  font-family: "Avenir", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;

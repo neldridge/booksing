@@ -22,17 +22,38 @@ import (
 )
 
 type booksingApp struct {
-	books         *mgo.Collection
-	downloads     *mgo.Collection
-	allowDeletes  bool
-	allowOrganize bool
-	bookDir       string
+	books          *mgo.Collection
+	downloads      *mgo.Collection
+	refreshResults *mgo.Collection
+	allowDeletes   bool
+	allowOrganize  bool
+	bookDir        string
 }
 
 type bookResponse struct {
 	Books      []Book `json:"books"`
 	TotalCount int    `json:"total"`
 	timestamp  time.Time
+}
+
+type parseResult int32
+
+// hold all possible book parse results
+const (
+	OldBook       parseResult = iota
+	AddedBook     parseResult = iota
+	DuplicateBook parseResult = iota
+	InvalidBook   parseResult = iota
+)
+
+// RefreshResult holds the result of a full refresh
+type RefreshResult struct {
+	StartTime time.Time
+	StopTime  time.Time
+	Old       int
+	Added     int
+	Duplicate int
+	Invalid   int
 }
 
 type download struct {
@@ -85,11 +106,12 @@ func main() {
 		return
 	}
 	app := booksingApp{
-		books:         session.C("books"),
-		downloads:     session.C("downloads"),
-		allowDeletes:  allowDeletes,
-		allowOrganize: allowOrganize,
-		bookDir:       bookDir,
+		books:          session.C("books"),
+		downloads:      session.C("downloads"),
+		refreshResults: session.C("refreshResults"),
+		allowDeletes:   allowDeletes,
+		allowOrganize:  allowOrganize,
+		bookDir:        bookDir,
 	}
 	app.createIndices()
 
@@ -97,8 +119,10 @@ func main() {
 	http.HandleFunc("/search", app.getBooks())
 	http.HandleFunc("/duplicates.json", app.getDuplicates())
 	http.HandleFunc("/book.json", app.getBook())
+	http.HandleFunc("/user.json", app.getUser())
 	http.HandleFunc("/exists", app.bookPresent())
 	http.HandleFunc("/convert/", app.convertBook())
+	http.HandleFunc("/delete/", app.deleteBook())
 	http.HandleFunc("/download/", app.downloadBook())
 	http.Handle("/", http.FileServer(assetFS()))
 
@@ -225,6 +249,18 @@ func (app booksingApp) getBook() http.HandlerFunc {
 			return
 		}
 		json.NewEncoder(w).Encode(book)
+	}
+}
+func (app booksingApp) getUser() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := r.Header.Get("x-auth-user")
+		admin := false
+		if user == os.Getenv("ADMIN_USER") || os.Getenv("ANONYMOUS_ADMIN") != "" {
+			admin = true
+		}
+		json.NewEncoder(w).Encode(map[string]bool{
+			"admin": admin,
+		})
 	}
 }
 
@@ -376,6 +412,9 @@ func (app booksingApp) filterBooks(filter string, limit int, exact bool) []Book 
 func (app booksingApp) refreshBooks() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Info("starting refresh of booklist")
+		results := RefreshResult{
+			StartTime: time.Now(),
+		}
 		clean := r.URL.Query().Get("clean")
 		if clean == "force" {
 			info, err := app.books.RemoveAll(nil)
@@ -396,7 +435,7 @@ func (app booksingApp) refreshBooks() http.HandlerFunc {
 		}).Info("located books on filesystem")
 
 		bookQ := make(chan string, len(matches))
-		resultQ := make(chan int)
+		resultQ := make(chan parseResult)
 
 		for w := 0; w < 6; w++ { //not sure yet how concurrent-proof my solution is
 			go app.bookParser(bookQ, resultQ)
@@ -407,26 +446,46 @@ func (app booksingApp) refreshBooks() http.HandlerFunc {
 		}
 
 		for a := 0; a < len(matches); a++ {
-			<-resultQ
+			r := <-resultQ
+
+			switch r {
+			case OldBook:
+				results.Old++
+			case InvalidBook:
+				results.Invalid++
+			case AddedBook:
+				results.Added++
+			case DuplicateBook:
+				results.Duplicate++
+			}
 			if a > 0 && a%500 == 0 {
 				log.WithFields(log.Fields{
 					"processed": a,
 					"total":     len(matches),
 				}).Info("processing books")
 			}
+
+		}
+		results.StopTime = time.Now()
+		err = app.refreshResults.Insert(results)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"err":     err,
+				"results": results,
+			}).Error("Could not save refresh results")
 		}
 
-		log.Info("finished refresh of booklist")
+		log.WithField("result", results).Info("finished refresh of booklist")
 	}
 }
 
-func (app booksingApp) bookParser(bookQ chan string, resultQ chan int) {
+func (app booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) {
 	for filename := range bookQ {
 		var dbBook Book
 		//err := db.One("Filepath", filename, &dbBook)
 		err := app.books.Find(bson.M{"filepath": filename}).One(&dbBook)
 		if err == nil {
-			resultQ <- 1
+			resultQ <- OldBook
 			continue
 		}
 		book, err := NewBookFromFile(filename, app.allowOrganize, app.bookDir)
@@ -438,7 +497,7 @@ func (app booksingApp) bookParser(bookQ chan string, resultQ chan int) {
 				}).Info("Deleting book")
 				os.Remove(filename)
 			}
-			resultQ <- 1
+			resultQ <- InvalidBook
 			continue
 		}
 		book.ID = bson.NewObjectId()
@@ -451,7 +510,32 @@ func (app booksingApp) bookParser(bookQ chan string, resultQ chan int) {
 				}).Info("Deleting book")
 				os.Remove(filename)
 			}
+			resultQ <- DuplicateBook
+		} else {
+			resultQ <- AddedBook
 		}
-		resultQ <- 1
+	}
+}
+
+func (app booksingApp) deleteBook() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := r.ParseForm()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		hash := r.Form.Get("hash")
+		var book Book
+		err = app.books.Find(bson.M{"hash": hash}).One(&book)
+		if err != nil {
+			return
+		}
+		if book.HasMobi {
+			mobiPath := strings.Replace(book.Filepath, ".epub", ".mobi", 1)
+			os.Remove(mobiPath)
+		}
+		os.Remove(book.Filepath)
+
+		app.books.Remove(bson.M{"hash": hash})
 	}
 }

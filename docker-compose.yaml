@@ -19,6 +19,7 @@ services:
       - BOOK_DIR=/books
       - REORGANIZE_BOOKS=true
       - ALLOW_DELETES=true
+      - ANONYMOUS_ADMIN=yes
       - SYSLOG_REMOTE=parrot:514
     ports:
      - 7132:7132
