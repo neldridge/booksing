@@ -32,18 +32,20 @@
       :data="books"
       paginated
       striped
+      mobile-cards="false"
+      narrowed
       detailed
+      :has-detailed-visible="showDetailed"
       :checked-rows.sync="checkedRows"
       :checkable="isAdmin"
       :loading="isLoading"
-
-
       per-page="50">
+
       <template slot-scope="props">
-        <b-table-column field="author" label="auteur">{{ props.row.author }}</b-table-column>
-        <b-table-column field="title" label="titel">{{ props.row.title }}</b-table-column>
-        <b-table-column field="language" label="taal">{{ props.row.language }}</b-table-column>
-        <b-table-column field="added" label="toegevoegd">{{ formatDate(props.row.date_added) }}</b-table-column>
+        <b-table-column field="author" label="author">{{ props.row.author }}</b-table-column>
+        <b-table-column field="title" label="title">{{ props.row.title }}</b-table-column>
+        <b-table-column field="language" label="language">{{ props.row.language }}</b-table-column>
+        <b-table-column field="added" label="added">{{ formatDate(props.row.date_added) }}</b-table-column>
         <b-table-column field="dl" label="epub"><a :href="'/download/?book=' + props.row.filename">download</a></b-table-column>
         <b-table-column 
             field="convert"
@@ -55,6 +57,20 @@
       </template>
       <template slot="detail" slot-scope="props">
         <span v-html="formatFullMessage(props.row.description)"/><br />
+      </template>
+
+      <template slot="empty">
+          <section class="section">
+              <div class="content has-text-grey has-text-centered">
+                  <p>
+                      <b-icon
+                          icon="emoticon-sad"
+                          size="is-large">
+                      </b-icon>
+                  </p>
+                  <p>Nothing here.</p>
+              </div>
+          </section>
       </template>
     </b-table>
       
@@ -93,8 +109,12 @@ export default {
   },
 
   methods: {
-    formatFullMessage(obj) {
-      return "<span>" + JSON.stringify(obj, null, "  ") + "</span>";
+    formatFullMessage(description) {
+      return (
+        "<span>" +
+        description.replace(/([^>\r\n]?)(\r\n|\n\r|\r|\n)/g, "$1<br>$2") +
+        "</span>"
+      );
     },
     formatDate(dateStr) {
       var d = new Date(dateStr);
@@ -103,6 +123,9 @@ export default {
         month: "long",
         day: "numeric"
       });
+    },
+    showDetailed(book) {
+      return book.description != "";
     },
     convertBook: function(hash) {
       console.log(hash);
@@ -151,7 +174,7 @@ export default {
       },
       // This is the number of milliseconds we wait for the
       // user to stop typing.
-      1000
+      500
     ),
     deleteSelectedBooks: function() {
       var vm = this;
