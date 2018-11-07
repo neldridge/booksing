@@ -1,7 +1,11 @@
 FROM node as jsbuilder
 WORKDIR /workspace
-COPY web /workspace
+COPY web/package.json /workspace/
+COPY web/package-lock.json /workspace/
 RUN npm install
+COPY web/src /workspace/src
+COPY web/babel.config.js /workspace/
+COPY web/vue.config.js /workspace/
 RUN npm run build
 
 

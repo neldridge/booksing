@@ -5,12 +5,6 @@ services:
     restart: always
     ports:
      - 27017:27017
-  parrot:
-    build:
-      context: ../parrot/
-    ports:
-     - 514:514/udp
-     - 8080:8080
   booksing:
     build:
       context: .
@@ -20,6 +14,5 @@ services:
       - REORGANIZE_BOOKS=true
       - ALLOW_DELETES=true
       - ANONYMOUS_ADMIN=yes
-      - SYSLOG_REMOTE=parrot:514
     ports:
      - 7132:7132
