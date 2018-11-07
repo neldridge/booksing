@@ -154,6 +154,16 @@ func (app booksingApp) createIndices() error {
 			DropDups: false,
 		},
 		mgo.Index{
+			Key:      []string{"author"},
+			Unique:   false,
+			DropDups: false,
+		},
+		mgo.Index{
+			Key:      []string{"title"},
+			Unique:   false,
+			DropDups: false,
+		},
+		mgo.Index{
 			Key:      []string{"date_added"},
 			Unique:   false,
 			DropDups: false,
@@ -258,6 +268,12 @@ func (app booksingApp) getUser() http.HandlerFunc {
 		if user == os.Getenv("ADMIN_USER") || os.Getenv("ANONYMOUS_ADMIN") != "" {
 			admin = true
 		}
+		log.WithFields(log.Fields{
+			"x-auth-user": user,
+			"admin":       admin,
+			"env-user":    os.Getenv("ADMIN_USER"),
+			"anon-admin":  os.Getenv("ANONYMOUS_ADMIN"),
+		}).Info("getting user admin")
 		json.NewEncoder(w).Encode(map[string]bool{
 			"admin": admin,
 		})
@@ -394,6 +410,9 @@ func (app booksingApp) filterBooks(filter string, limit int, exact bool) []Book 
 	var iter *mgo.Iter
 	if filter == "" {
 		iter = app.books.Find(bson.M{"language": "nl"}).Sort("-date_added").Limit(limit).Iter()
+	} else if strings.Contains(filter, ":") {
+		q := parseQuery(filter)
+		iter = app.books.Find(q).Limit(limit).Sort("author", "title").Iter()
 	} else if exact {
 		s := strings.Split(filter, " ")
 		iter = app.books.Find(bson.M{"search_keys": bson.M{"$all": s}}).Limit(limit).Sort("author", "title").Iter()
