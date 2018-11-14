@@ -213,6 +213,8 @@ func fixLang(s string) string {
 		s = "nl"
 	case "nl-nl":
 		s = "nl"
+	case "nl_nl":
+		s = "nl"
 	case "dut":
 		s = "nl"
 
@@ -228,6 +230,8 @@ func fixLang(s string) string {
 		s = "de"
 	case "de-de":
 		s = "de"
+	case "de_de":
+		s = "de"
 
 	case "english":
 		s = "en"
@@ -242,6 +246,12 @@ func fixLang(s string) string {
 	case "en-gb":
 		s = "en"
 	case "en-en":
+		s = "en"
+	case "en_us":
+		s = "en"
+	case "en_gb":
+		s = "en"
+	case "en_en":
 		s = "en"
 	case "us":
 		s = "en"
