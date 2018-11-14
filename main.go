@@ -57,10 +57,10 @@ type RefreshResult struct {
 }
 
 type download struct {
-	Book      string
-	User      string
-	IP        string
-	Timestamp time.Time
+	Book      string    `json:"hash"`
+	User      string    `json:"user"`
+	IP        string    `json:"ip"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 type bookConvertRequest struct {
@@ -120,6 +120,8 @@ func main() {
 	http.HandleFunc("/duplicates.json", app.getDuplicates())
 	http.HandleFunc("/book.json", app.getBook())
 	http.HandleFunc("/user.json", app.getUser())
+	http.HandleFunc("/downloads.json", app.getDownloads())
+	http.HandleFunc("/refreshes.json", app.getRefreshes())
 	http.HandleFunc("/exists", app.bookPresent())
 	http.HandleFunc("/convert/", app.convertBook())
 	http.HandleFunc("/delete/", app.deleteBook())
@@ -277,6 +279,43 @@ func (app booksingApp) getUser() http.HandlerFunc {
 		json.NewEncoder(w).Encode(map[string]bool{
 			"admin": admin,
 		})
+	}
+}
+
+func (app booksingApp) getDownloads() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := r.Header.Get("x-auth-user")
+		admin := false
+		if user == os.Getenv("ADMIN_USER") || os.Getenv("ANONYMOUS_ADMIN") != "" {
+			admin = true
+		}
+		if !admin {
+			json.NewEncoder(w).Encode([]bool{})
+			return
+		}
+		var downloads []download
+
+		app.downloads.Find(nil).Sort("-timestamp").Iter().All(&downloads)
+
+		json.NewEncoder(w).Encode(downloads)
+	}
+}
+func (app booksingApp) getRefreshes() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := r.Header.Get("x-auth-user")
+		admin := false
+		if user == os.Getenv("ADMIN_USER") || os.Getenv("ANONYMOUS_ADMIN") != "" {
+			admin = true
+		}
+		if !admin {
+			json.NewEncoder(w).Encode([]bool{})
+			return
+		}
+		var refreshes []RefreshResult
+
+		app.refreshResults.Find(nil).Sort("-starttime").Iter().All(&refreshes)
+
+		json.NewEncoder(w).Encode(refreshes)
 	}
 }
 
