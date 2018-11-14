@@ -18,13 +18,9 @@
             <b-icon icon="delete"></b-icon>
             <span>Delete selected ({{ checkedRows.length }})</span>
         </button>
-        <button 
-              class="button field is-info"
-              @click="refreshBooklist"
-              v-if="isAdmin">
-            <b-icon icon="refresh"></b-icon>
-            <span>{{ refreshButtonText }}</span>
-        </button>
+        <router-link v-if="isAdmin" :to="{ name: 'admin' }" class="button field is-info">
+          admin
+        </router-link>
     </nav>
   
   <div class="section">
@@ -32,7 +28,6 @@
       :data="books"
       paginated
       striped
-      mobile-cards="false"
       narrowed
       detailed
       :has-detailed-visible="showDetailed"
