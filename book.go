@@ -1,22 +1,18 @@
 package main
 
 import (
-	"archive/zip"
-	"errors"
 	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"time"
 
 	"strings"
 
-	"github.com/beevik/etree"
 	"github.com/globalsign/mgo/bson"
+	"github.com/gnur/booksing/epub"
 	"github.com/kennygrant/sanitize"
-	"golang.org/x/tools/godoc/vfs/zipfs"
 )
 
 var yearRemove = regexp.MustCompile(`\((1|2)[0-9]{3}\)`)
@@ -24,7 +20,7 @@ var drukRemove = regexp.MustCompile(`(?i)/ druk [0-9]+`)
 var filenameSafe = regexp.MustCompile("[^a-zA-Z0-9 -]+")
 var version uint8 = 1
 
-// Book represents a book
+// Book represents a book record in the database, regular "book" data with extra metadata
 type Book struct {
 	ID              bson.ObjectId `json:"id"`
 	Hash            string        `json:"hash"`
@@ -43,88 +39,36 @@ type Book struct {
 
 // NewBookFromFile creates a book object from a file
 func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			bk = nil
-			err = fmt.Errorf("Unknown error parsing book. Skipping. Error: %s", r)
-		}
-	}()
+	epub, err := epub.ParseFile(bookpath)
+	if err != nil {
+		return nil, err
+	}
+
+	book := Book{
+		Title:       epub.Title,
+		Author:      epub.Author,
+		Language:    epub.Language,
+		Description: epub.Description,
+	}
 
 	f, err := os.Open(bookpath)
 	if err != nil {
 		return nil, err
 	}
 
+	mobiPath := strings.Replace(bookpath, "epub", "mobi", -1)
+	_, err = os.Stat(mobiPath)
+	book.HasMobi = !os.IsNotExist(err)
+
+	book.Filename = filepath.Base(bookpath)
+	book.Filepath = bookpath
+
 	fi, err := f.Stat()
 	if err != nil {
 		f.Close()
 		return nil, err
 	}
-
-	book := new(Book)
-	book.BooksingVersion = version
-	book.Language = ""
-	book.Title = filepath.Base(bookpath)
-	book.Filename = filepath.Base(bookpath)
-	book.Filepath = bookpath
 	book.Added = fi.ModTime()
-
-	mobiPath := strings.Replace(bookpath, "epub", "mobi", -1)
-	_, err = os.Stat(mobiPath)
-	book.HasMobi = !os.IsNotExist(err)
-
-	zr, err := zip.OpenReader(bookpath)
-	if err != nil {
-		return nil, err
-	}
-
-	zfs := zipfs.New(zr, "epub")
-
-	rsk, err := zfs.Open("/META-INF/container.xml")
-	if err != nil {
-		return nil, err
-	}
-	defer rsk.Close()
-	container := etree.NewDocument()
-	_, err = container.ReadFrom(rsk)
-	if err != nil {
-		return nil, err
-	}
-	rootfile := ""
-	for _, e := range container.FindElements("//rootfiles/rootfile[@full-path]") {
-		rootfile = e.SelectAttrValue("full-path", "")
-	}
-	if rootfile == "" {
-		return nil, errors.New("Cannot parse container")
-	}
-
-	rootReadSeeker, err := zfs.Open("/" + rootfile)
-	if err != nil {
-		return nil, err
-	}
-	defer rootReadSeeker.Close()
-	opf := etree.NewDocument()
-	_, err = opf.ReadFrom(rootReadSeeker)
-	if err != nil {
-		return nil, err
-	}
-	book.Title = filepath.Base(bookpath)
-	for _, e := range opf.FindElements("//title") {
-		book.Title = e.Text()
-		break
-	}
-	for _, e := range opf.FindElements("//creator") {
-		book.Author = e.Text()
-		break
-	}
-	for _, e := range opf.FindElements("//description") {
-		book.Description = e.Text()
-		break
-	}
-	for _, e := range opf.FindElements("//language") {
-		book.Language = e.Text()
-		break
-	}
 
 	book.Title = fix(book.Title, true, false)
 	book.Author = fix(book.Author, true, true)
@@ -138,7 +82,7 @@ func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, er
 	book.Hash = hashBook(book.Author, book.Title)
 
 	if rename {
-		newBookPath := path.Join(baseDir, getOrganizedBookPath(book))
+		newBookPath := path.Join(baseDir, getOrganizedBookPath(&book))
 		if bookpath != newBookPath {
 			baseDir := filepath.Dir(newBookPath)
 			err := os.MkdirAll(baseDir, 0755)
@@ -150,7 +94,7 @@ func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, er
 		}
 	}
 
-	return book, nil
+	return &book, nil
 }
 
 func getOrganizedBookPath(b *Book) string {
@@ -170,33 +114,6 @@ func getOrganizedBookPath(b *Book) string {
 	formatted = strings.Replace(formatted, "__", "_", -1)
 
 	return formatted
-}
-
-// BookList is a list of books
-type BookList []Book
-
-// Sorted returns a copy of the BookList sorted by the function
-func (l *BookList) Sorted(sorter func(a, b Book) bool) BookList {
-	// Make a copy
-	sorted := make(BookList, len(*l))
-	copy(sorted, *l)
-	// Sort the copy
-	sort.Slice(sorted, func(i, j int) bool {
-		return sorter(sorted[i], sorted[j])
-	})
-	return sorted
-}
-
-// Filtered returns a copy of the BookList filtered by the function
-func (l *BookList) Filtered(filterer func(a Book) bool) *BookList {
-	filtered := BookList{}
-	for _, a := range *l {
-		if filterer(a) {
-			filtered = append(filtered, a)
-		}
-	}
-
-	return &filtered
 }
 
 func fixLang(s string) string {

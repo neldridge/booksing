@@ -17,6 +17,7 @@ RUN go get github.com/elazarl/go-bindata-assetfs/...
 COPY --from=jsbuilder /workspace/dist web/dist
 RUN go-bindata-assetfs -prefix web web/dist/...
 COPY vendor vendor
+COPY epub epub
 COPY *.go ./
 RUN go build -ldflags "-linkmode external -extldflags -static" -o booksing *.go
 
