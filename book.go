@@ -105,7 +105,8 @@ func getOrganizedBookPath(b *Book) string {
 	if len(title) > 35 {
 		title = title[:30]
 	}
-	title = strings.TrimSuffix(title, " ")
+	title = strings.TrimSpace(title)
+	author = strings.TrimSpace(author)
 	firstChar := author[0:1]
 	parts := strings.Split(author, " ")
 	firstChar = parts[len(parts)-1][0:1]

@@ -22,6 +22,6 @@ COPY *.go ./
 RUN go build -ldflags "-linkmode external -extldflags -static" -o booksing *.go
 
 FROM gnur/calibre:2018-07-10
-COPY --from=builder /go/src/github.com/gnur/booksing/booksing /
 COPY /testdata /books
+COPY --from=builder /go/src/github.com/gnur/booksing/booksing /
 CMD [ "/booksing" ]
