@@ -1,27 +1,16 @@
 package main
 
 import (
-	"log/syslog"
 	"net/http"
 	"os"
+	"path"
 	"strings"
-
-	lSyslog "github.com/sirupsen/logrus/hooks/syslog"
 
 	"github.com/globalsign/mgo"
 	log "github.com/sirupsen/logrus"
 )
 
 func main() {
-	syslogServer := os.Getenv("SYSLOG_REMOTE")
-	if syslogServer != "" {
-		hook, err := lSyslog.NewSyslogHook("udp", syslogServer, syslog.LOG_INFO, "")
-		if err == nil {
-			log.SetFormatter(&log.JSONFormatter{})
-			log.AddHook(&AddSourceHook{})
-			log.AddHook(hook)
-		}
-	}
 	envDeletes := os.Getenv("ALLOW_DELETES")
 	allowDeletes := envDeletes != "" && strings.ToLower(envDeletes) == "true"
 	envOrganize := os.Getenv("REORGANIZE_BOOKS")
@@ -30,6 +19,7 @@ func main() {
 	if bookDir == "" {
 		bookDir = "."
 	}
+	importDir := path.Join(bookDir, "import")
 	mongoHost := os.Getenv("MONGO_HOST")
 	if mongoHost == "" {
 		mongoHost = "localhost"
@@ -52,8 +42,9 @@ func main() {
 		allowDeletes:   allowDeletes,
 		allowOrganize:  allowOrganize,
 		bookDir:        bookDir,
+		importDir:      importDir,
 	}
-	app.createIndices()
+	go app.refreshLoop()
 
 	http.HandleFunc("/refresh", app.refreshBooks())
 	http.HandleFunc("/search", app.getBooks())

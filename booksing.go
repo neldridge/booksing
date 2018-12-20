@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,12 +11,23 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	zglob "github.com/mattn/go-zglob"
 	log "github.com/sirupsen/logrus"
+)
+
+const (
+	stateUnlocked uint32 = iota
+	stateLocked
+)
+
+var (
+	locker    = stateUnlocked
+	errLocked = errors.New("already running")
 )
 
 type booksingApp struct {
@@ -25,10 +37,17 @@ type booksingApp struct {
 	allowDeletes   bool
 	allowOrganize  bool
 	bookDir        string
+	importDir      string
 }
 
-func (app booksingApp) createIndices() error {
+func (app *booksingApp) refreshLoop() {
+	for {
+		app.refresh()
+		time.Sleep(time.Hour)
+	}
+}
 
+func (app *booksingApp) createIndices() error {
 	indices := []mgo.Index{
 		mgo.Index{
 			Key:      []string{"hash"},
@@ -90,7 +109,7 @@ func (app booksingApp) createIndices() error {
 
 }
 
-func (app booksingApp) downloadBook() http.HandlerFunc {
+func (app *booksingApp) downloadBook() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fileName := r.URL.Query().Get("book")
 		toMobi := strings.HasSuffix(fileName, ".mobi")
@@ -131,7 +150,7 @@ func (app booksingApp) downloadBook() http.HandlerFunc {
 	}
 }
 
-func (app booksingApp) bookPresent() http.HandlerFunc {
+func (app *booksingApp) bookPresent() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		author := r.URL.Query().Get("author")
 		title := r.URL.Query().Get("title")
@@ -147,7 +166,7 @@ func (app booksingApp) bookPresent() http.HandlerFunc {
 	}
 }
 
-func (app booksingApp) getBook() http.HandlerFunc {
+func (app *booksingApp) getBook() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		hash := r.URL.Query().Get("hash")
 		var book Book
@@ -158,7 +177,7 @@ func (app booksingApp) getBook() http.HandlerFunc {
 		json.NewEncoder(w).Encode(book)
 	}
 }
-func (app booksingApp) getUser() http.HandlerFunc {
+func (app *booksingApp) getUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		admin := app.userIsAdmin(r)
 		json.NewEncoder(w).Encode(map[string]bool{
@@ -167,7 +186,7 @@ func (app booksingApp) getUser() http.HandlerFunc {
 	}
 }
 
-func (app booksingApp) userIsAdmin(r *http.Request) bool {
+func (app *booksingApp) userIsAdmin(r *http.Request) bool {
 	user := r.Header.Get("x-auth-user")
 	admin := false
 	if user == os.Getenv("ADMIN_USER") || os.Getenv("ANONYMOUS_ADMIN") != "" {
@@ -183,7 +202,7 @@ func (app booksingApp) userIsAdmin(r *http.Request) bool {
 
 }
 
-func (app booksingApp) getDownloads() http.HandlerFunc {
+func (app *booksingApp) getDownloads() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		admin := app.userIsAdmin(r)
 		if !admin {
@@ -197,7 +216,7 @@ func (app booksingApp) getDownloads() http.HandlerFunc {
 		json.NewEncoder(w).Encode(downloads)
 	}
 }
-func (app booksingApp) getRefreshes() http.HandlerFunc {
+func (app *booksingApp) getRefreshes() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		admin := app.userIsAdmin(r)
 		if !admin {
@@ -212,7 +231,7 @@ func (app booksingApp) getRefreshes() http.HandlerFunc {
 	}
 }
 
-func (app booksingApp) convertBook() http.HandlerFunc {
+func (app *booksingApp) convertBook() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := r.ParseForm()
 		if err != nil {
@@ -241,7 +260,7 @@ func (app booksingApp) convertBook() http.HandlerFunc {
 	}
 }
 
-func (app booksingApp) getDuplicates() http.HandlerFunc {
+func (app *booksingApp) getDuplicates() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var resp bookResponse
 		var book Book
@@ -294,7 +313,7 @@ func (app booksingApp) getDuplicates() http.HandlerFunc {
 	}
 }
 
-func (app booksingApp) getBooks() http.HandlerFunc {
+func (app *booksingApp) getBooks() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var resp bookResponse
 		var limit int
@@ -331,7 +350,7 @@ func (app booksingApp) getBooks() http.HandlerFunc {
 	}
 }
 
-func (app booksingApp) filterBooks(filter string, limit int, exact bool) []Book {
+func (app *booksingApp) filterBooks(filter string, limit int, exact bool) []Book {
 	var books []Book
 	var iter *mgo.Iter
 	if filter == "" {
@@ -354,77 +373,81 @@ func (app booksingApp) filterBooks(filter string, limit int, exact bool) []Book 
 	return books
 }
 
-func (app booksingApp) refreshBooks() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		log.Info("starting refresh of booklist")
-		results := RefreshResult{
-			StartTime: time.Now(),
-		}
-		clean := r.URL.Query().Get("clean")
-		if clean == "force" {
-			info, err := app.books.RemoveAll(nil)
-			if err != nil {
-				log.WithField("err", err).Warning("clearing collection failed")
-			}
-			log.WithField("removed", info.Removed).Warning("documents were removed")
-		}
-		app.createIndices()
-		matches, err := zglob.Glob(filepath.Join(app.bookDir, "/**/*.epub"))
-		if err != nil {
-			log.WithField("err", err).Error("glob of all books failed")
-			return
-		}
-		log.WithFields(log.Fields{
-			"total":   len(matches),
-			"bookdir": app.bookDir,
-		}).Info("located books on filesystem")
+func (app *booksingApp) refresh() {
+	if !atomic.CompareAndSwapUint32(&locker, stateUnlocked, stateLocked) {
+		log.Warning("not refreshing because it is already running")
+		return
+	}
+	defer atomic.StoreUint32(&locker, stateUnlocked)
+	log.Info("starting refresh of booklist")
+	results := RefreshResult{
+		StartTime: time.Now(),
+	}
+	app.createIndices()
+	matches, err := zglob.Glob(filepath.Join(app.importDir, "/**/*.epub"))
+	if err != nil {
+		log.WithField("err", err).Error("glob of all books failed")
+		return
+	}
+	if len(matches) == 0 {
+		log.Info("finished refresh of booklist, no new books found")
+		return
+	}
+	log.WithFields(log.Fields{
+		"total":   len(matches),
+		"bookdir": app.bookDir,
+	}).Info("located books on filesystem")
 
-		bookQ := make(chan string, len(matches))
-		resultQ := make(chan parseResult)
+	bookQ := make(chan string, len(matches))
+	resultQ := make(chan parseResult)
 
-		for w := 0; w < 6; w++ { //not sure yet how concurrent-proof my solution is
-			go app.bookParser(bookQ, resultQ)
+	for w := 0; w < 6; w++ { //not sure yet how concurrent-proof my solution is
+		go app.bookParser(bookQ, resultQ)
+	}
+
+	for _, filename := range matches {
+		bookQ <- filename
+	}
+
+	for a := 0; a < len(matches); a++ {
+		r := <-resultQ
+
+		switch r {
+		case OldBook:
+			results.Old++
+		case InvalidBook:
+			results.Invalid++
+		case AddedBook:
+			results.Added++
+		case DuplicateBook:
+			results.Duplicate++
 		}
-
-		for _, filename := range matches {
-			bookQ <- filename
-		}
-
-		for a := 0; a < len(matches); a++ {
-			r := <-resultQ
-
-			switch r {
-			case OldBook:
-				results.Old++
-			case InvalidBook:
-				results.Invalid++
-			case AddedBook:
-				results.Added++
-			case DuplicateBook:
-				results.Duplicate++
-			}
-			if a > 0 && a%500 == 0 {
-				log.WithFields(log.Fields{
-					"processed": a,
-					"total":     len(matches),
-				}).Info("processing books")
-			}
-
-		}
-		results.StopTime = time.Now()
-		err = app.refreshResults.Insert(results)
-		if err != nil {
+		if a > 0 && a%100 == 0 {
 			log.WithFields(log.Fields{
-				"err":     err,
-				"results": results,
-			}).Error("Could not save refresh results")
+				"processed": a,
+				"total":     len(matches),
+			}).Info("processing books")
 		}
 
-		log.WithField("result", results).Info("finished refresh of booklist")
+	}
+	results.StopTime = time.Now()
+	err = app.refreshResults.Insert(results)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err":     err,
+			"results": results,
+		}).Error("Could not save refresh results")
+	}
+
+	log.WithField("result", results).Info("finished refresh of booklist")
+}
+func (app *booksingApp) refreshBooks() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		app.refresh()
 	}
 }
 
-func (app booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) {
+func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) {
 	for filename := range bookQ {
 		var dbBook Book
 		//err := db.One("Filepath", filename, &dbBook)
@@ -462,7 +485,7 @@ func (app booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) {
 	}
 }
 
-func (app booksingApp) deleteBook() http.HandlerFunc {
+func (app *booksingApp) deleteBook() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		admin := app.userIsAdmin(r)
 		if !admin {
