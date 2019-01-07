@@ -107,9 +107,14 @@ func getOrganizedBookPath(b *Book) string {
 	}
 	title = strings.TrimSpace(title)
 	author = strings.TrimSpace(author)
-	firstChar := author[0:1]
+	if len(author) == 0 {
+		author = "unknown"
+	}
+	if len(title) == 0 {
+		author = "unknown"
+	}
 	parts := strings.Split(author, " ")
-	firstChar = parts[len(parts)-1][0:1]
+	firstChar := parts[len(parts)-1][0:1]
 	formatted := fmt.Sprintf("%s/%s/%s-%s.epub", firstChar, author, author, title)
 	formatted = strings.Replace(formatted, " ", "_", -1)
 	formatted = strings.Replace(formatted, "__", "_", -1)
