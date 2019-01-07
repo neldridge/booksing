@@ -430,6 +430,11 @@ func (app *booksingApp) refresh() {
 		}
 
 	}
+	total, err := app.books.Count()
+	if err != nil {
+		log.WithField("err", err).Error("could not get total book count")
+	}
+	results.Old = total
 	results.StopTime = time.Now()
 	err = app.refreshResults.Insert(results)
 	if err != nil {
