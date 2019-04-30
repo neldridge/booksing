@@ -9,15 +9,17 @@ COPY web/vue.config.js /workspace/
 RUN npm run build
 
 
-FROM golang:1.10 as builder
+FROM golang:1.12 as builder
 WORKDIR /go/src/github.com/gnur/booksing/
 #RUN apt-get update && apt-get install -y git
 RUN go get github.com/jteeuwen/go-bindata/...
 RUN go get github.com/elazarl/go-bindata-assetfs/...
+ENV GO111MODULE=on
 COPY --from=jsbuilder /workspace/dist web/dist
 RUN go-bindata-assetfs -prefix web web/dist/...
-COPY vendor vendor
 COPY epub epub
+COPY go.mod go.mod
+RUN go get .
 COPY *.go ./
 RUN go build -ldflags "-linkmode external -extldflags -static" -o booksing *.go
 
