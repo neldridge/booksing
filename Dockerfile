@@ -19,7 +19,7 @@ COPY --from=jsbuilder /workspace/dist web/dist
 RUN go-bindata-assetfs -prefix web web/dist/...
 COPY epub epub
 COPY go.mod go.mod
-RUN go get .
+RUN go mod download
 COPY *.go ./
 RUN go build -ldflags "-linkmode external -extldflags -static" -o booksing *.go
 
