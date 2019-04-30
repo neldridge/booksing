@@ -18,23 +18,21 @@ import (
 var yearRemove = regexp.MustCompile(`\((1|2)[0-9]{3}\)`)
 var drukRemove = regexp.MustCompile(`(?i)/ druk [0-9]+`)
 var filenameSafe = regexp.MustCompile("[^a-zA-Z0-9 -]+")
-var version uint8 = 1
 
 // Book represents a book record in the database, regular "book" data with extra metadata
 type Book struct {
-	ID              bson.ObjectId `json:"id"`
-	Hash            string        `json:"hash"`
-	Title           string        `json:"title"`
-	Author          string        `json:"author"`
-	Language        string        `json:"language"`
-	Description     string        `json:"description"`
-	Filepath        string        `json:"filepath"`
-	Filename        string        `json:"filename"`
-	HasMobi         bool          `json:"hasmobi"`
-	MetaphoneKeys   []string      `bson:"metaphone_keys"`
-	SearchWords     []string      `bson:"search_keys"`
-	Added           time.Time     `bson:"date_added" json:"date_added"`
-	BooksingVersion uint8         `bson:"booksing_version" json:"booksing_version"`
+	ID            bson.ObjectId `json:"id"`
+	Hash          string        `json:"hash"`
+	Title         string        `json:"title"`
+	Author        string        `json:"author"`
+	Language      string        `json:"language"`
+	Description   string        `json:"description"`
+	Filepath      string        `json:"filepath"`
+	Filename      string        `json:"filename"`
+	HasMobi       bool          `json:"hasmobi"`
+	MetaphoneKeys []string      `bson:"metaphone_keys"`
+	SearchWords   []string      `bson:"search_keys"`
+	Added         time.Time     `bson:"date_added" json:"date_added"`
 }
 
 // NewBookFromFile creates a book object from a file

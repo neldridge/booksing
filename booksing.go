@@ -40,6 +40,18 @@ type booksingApp struct {
 	importDir      string
 }
 
+type db interface {
+	AddBook(*Book) error
+	GetBook(string) (*Book, error)
+	GetBooks(string) ([]*Book, error)
+
+	AddDownload(*download) error
+	GetDownloads(string) ([]*download, error)
+
+	AddRefresh(*RefreshResult) error
+	GetRefreshes([]*RefreshResult) error
+}
+
 func (app *booksingApp) refreshLoop() {
 	for {
 		app.refresh()
@@ -86,11 +98,6 @@ func (app *booksingApp) createIndices() error {
 		},
 		mgo.Index{
 			Key:      []string{"language"},
-			Unique:   false,
-			DropDups: false,
-		},
-		mgo.Index{
-			Key:      []string{"booksing_version"},
 			Unique:   false,
 			DropDups: false,
 		},
