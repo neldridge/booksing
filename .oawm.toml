@@ -1,8 +1,0 @@
-[docker]
-buildfile = "Dockerfile"
-repository = "r.erwin.land/gnur/booksing"
-
-[deployment]
-enabled = true
-onlymaster = true
-namespace = "default"
