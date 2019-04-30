@@ -5,6 +5,7 @@ require (
 	github.com/beevik/etree v1.1.0
 	github.com/elazarl/go-bindata-assetfs v0.0.0-20180223160309-38087fe4dafb
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
+	github.com/kelseyhightower/envconfig v1.3.0
 	github.com/kennygrant/sanitize v1.2.4
 	github.com/konsorten/go-windows-terminal-sequences v1.0.1 // indirect
 	github.com/kr/pretty v0.1.0 // indirect

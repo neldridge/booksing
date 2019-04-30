@@ -2,30 +2,38 @@ package main
 
 import (
 	"net/http"
-	"os"
 	"path"
-	"strings"
 
 	"github.com/globalsign/mgo"
+	"github.com/kelseyhightower/envconfig"
 	log "github.com/sirupsen/logrus"
 )
 
+type configuration struct {
+	AllowDeletes  bool
+	AllowOrganize bool
+	BookDir       string `default:"."`
+	ImportDir     string `default:""`
+	MongoHost     string `default:"localhost"`
+	LogLevel      string `default:"info"`
+}
+
 func main() {
-	envDeletes := os.Getenv("ALLOW_DELETES")
-	allowDeletes := envDeletes != "" && strings.ToLower(envDeletes) == "true"
-	envOrganize := os.Getenv("REORGANIZE_BOOKS")
-	allowOrganize := envOrganize != "" && strings.ToLower(envOrganize) == "true"
-	bookDir := os.Getenv("BOOK_DIR")
-	if bookDir == "" {
-		bookDir = "."
+	var cfg configuration
+	err := envconfig.Process("booksing", &cfg)
+	if err != nil {
+		log.WithField("err", err).Fatal("Could not parse full config from environment")
 	}
-	importDir := path.Join(bookDir, "import")
-	mongoHost := os.Getenv("MONGO_HOST")
-	if mongoHost == "" {
-		mongoHost = "localhost"
+
+	logLevel, err := log.ParseLevel(cfg.LogLevel)
+	if err == nil {
+		log.SetLevel(logLevel)
 	}
-	log.WithField("address", mongoHost).Info("Connecting to mongodb")
-	conn, err := mgo.Dial(mongoHost)
+	if cfg.ImportDir == "" {
+		cfg.ImportDir = path.Join(cfg.BookDir, "import")
+	}
+	log.WithField("address", cfg.MongoHost).Info("Connecting to mongodb")
+	conn, err := mgo.Dial(cfg.MongoHost)
 	if err != nil {
 		log.WithField("err", err).Error("Could not connect to mongodb")
 		return
@@ -39,10 +47,10 @@ func main() {
 		books:          session.C("books"),
 		downloads:      session.C("downloads"),
 		refreshResults: session.C("refreshResults"),
-		allowDeletes:   allowDeletes,
-		allowOrganize:  allowOrganize,
-		bookDir:        bookDir,
-		importDir:      importDir,
+		allowDeletes:   cfg.AllowDeletes,
+		allowOrganize:  cfg.AllowOrganize,
+		bookDir:        cfg.BookDir,
+		importDir:      cfg.ImportDir,
 	}
 	go app.refreshLoop()
 
