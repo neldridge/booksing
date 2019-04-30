@@ -67,6 +67,9 @@ func (app *booksingApp) downloadBook() http.HandlerFunc {
 			Timestamp: time.Now(),
 		}
 		err = app.db.AddDownload(dl)
+		if err != nil {
+			log.WithField("err", err).Error("could not store download")
+		}
 		log.WithFields(log.Fields{
 			"user": r.Header.Get("x-auth-user"),
 			"ip":   ip,
@@ -173,7 +176,6 @@ func (app *booksingApp) convertBook() http.HandlerFunc {
 		if err != nil {
 			log.WithField("err", err).Error("Command finished with error")
 		} else {
-			book.HasMobi = true
 			app.db.SetBookConverted(hash)
 			log.WithField("book", book.Filepath).Debug("conversion successful")
 		}

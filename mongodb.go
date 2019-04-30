@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/globalsign/mgo"
@@ -63,11 +64,14 @@ func (db *mongoDB) GetBook(q string) (*Book, error) {
 }
 
 func (db *mongoDB) DeleteBook(hash string) error {
-	return nil
+	return db.books.Remove(bson.M{"hash": hash})
 }
 
 func (db *mongoDB) SetBookConverted(hash string) error {
-	return nil
+	book, _ := db.GetBook(fmt.Sprintf("hash: %s", hash))
+	book.HasMobi = true
+
+	return db.books.Update(bson.M{"hash": hash}, book)
 }
 
 func (db *mongoDB) GetBooks(q string, limit int) ([]Book, error) {
@@ -139,10 +143,13 @@ func (db *mongoDB) getRecentBooks(limit int) ([]Book, error) {
 }
 
 func (db *mongoDB) AddDownload(dl download) error {
-	return nil
+	return db.downloads.Insert(dl)
 }
 func (db *mongoDB) GetDownloads(limit int) ([]download, error) {
-	return nil, nil
+	var dls []download
+
+	err := db.downloads.Find(nil).Sort("-timestamp").Iter().All(&dls)
+	return dls, err
 }
 func (db *mongoDB) BookCount() int {
 	count, _ := db.books.Count()
@@ -150,10 +157,14 @@ func (db *mongoDB) BookCount() int {
 }
 
 func (db *mongoDB) AddRefresh(rr RefreshResult) error {
-	return nil
+	return db.refreshResults.Insert(rr)
 }
 func (db *mongoDB) GetRefreshes(limit int) ([]RefreshResult, error) {
-	return nil, nil
+	var refreshes []RefreshResult
+
+	err := db.refreshResults.Find(nil).Sort("-starttime").Iter().All(&refreshes)
+
+	return refreshes, err
 }
 
 func (db *mongoDB) createIndices() error {
