@@ -12,6 +12,7 @@ import (
 
 var ErrNonUniqueResult = errors.New("Query gave more then 1 result")
 var ErrNotFound = errors.New("Query no results")
+var ErrDuplicate = errors.New("Duplicate key")
 
 type mongoDB struct {
 	books          *mgo.Collection
@@ -47,8 +48,15 @@ func newMongoDB(host string) (*mongoDB, error) {
 }
 
 func (db *mongoDB) AddBook(b *Book) error {
-	return db.books.Insert(b)
+	b.ID = bson.NewObjectId()
+	err := db.books.Insert(b)
+
+	if mgo.IsDup(err) {
+		return ErrDuplicate
+	}
+	return err
 }
+
 func (db *mongoDB) GetBook(q string) (*Book, error) {
 	results, err := db.filterBooksBQL(q, 10)
 	if err != nil {

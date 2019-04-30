@@ -14,8 +14,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	zglob "github.com/mattn/go-zglob"
 	log "github.com/sirupsen/logrus"
 )
@@ -311,9 +309,8 @@ func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) 
 			resultQ <- InvalidBook
 			continue
 		}
-		book.ID = bson.NewObjectId()
 		err = app.db.AddBook(book)
-		if err != nil && mgo.IsDup(err) {
+		if err != nil && err == ErrDuplicate {
 			if app.allowDeletes {
 				log.WithFields(log.Fields{
 					"file":   filename,
