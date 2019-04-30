@@ -37,15 +37,6 @@ type download struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-type bookConvertRequest struct {
-	Hash          string `json:"bookhash"`
-	Receiver      string `json:"email"`
-	SMTPServer    string `json:"smtpserver"`
-	SMTPUser      string `json:"smtpuser"`
-	SMTPPassword  string `json:"smtppass"`
-	ConvertToMobi bool   `json:"convert"`
-}
-
 type pipelineResult struct {
 	Title  string   `bson:"_id"`
 	Count  int      `bson:"count"`
