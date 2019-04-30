@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -9,10 +8,6 @@ import (
 	"github.com/globalsign/mgo/bson"
 	log "github.com/sirupsen/logrus"
 )
-
-var ErrNonUniqueResult = errors.New("Query gave more then 1 result")
-var ErrNotFound = errors.New("Query no results")
-var ErrDuplicate = errors.New("Duplicate key")
 
 type mongoDB struct {
 	books          *mgo.Collection

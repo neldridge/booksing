@@ -1,8 +1,13 @@
 package main
 
 import (
+	"errors"
 	"time"
 )
+
+var ErrNonUniqueResult = errors.New("Query gave more then 1 result")
+var ErrNotFound = errors.New("Query no results")
+var ErrDuplicate = errors.New("Duplicate key")
 
 type bookResponse struct {
 	Books      []Book `json:"books"`
