@@ -42,3 +42,26 @@ type pipelineResult struct {
 	Count  int      `bson:"count"`
 	Hashes []string `bson:"docs"`
 }
+
+type booksingApp struct {
+	db            database
+	allowDeletes  bool
+	allowOrganize bool
+	bookDir       string
+	importDir     string
+}
+
+type database interface {
+	AddBook(*Book) error
+	BookCount() int
+	GetBook(string) (*Book, error)
+	DeleteBook(string) error
+	GetBooks(string, int) ([]Book, error)
+	SetBookConverted(string) error
+
+	AddDownload(download) error
+	GetDownloads(int) ([]download, error)
+
+	AddRefresh(RefreshResult) error
+	GetRefreshes(int) ([]RefreshResult, error)
+}

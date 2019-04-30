@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/globalsign/mgo"
 	"github.com/kelseyhightower/envconfig"
 	log "github.com/sirupsen/logrus"
 )
@@ -15,6 +14,7 @@ type configuration struct {
 	BookDir       string `default:"."`
 	ImportDir     string `default:""`
 	MongoHost     string `default:"localhost"`
+	UseMongo      bool   `default:"true"`
 	LogLevel      string `default:"info"`
 }
 
@@ -32,31 +32,25 @@ func main() {
 	if cfg.ImportDir == "" {
 		cfg.ImportDir = path.Join(cfg.BookDir, "import")
 	}
-	log.WithField("address", cfg.MongoHost).Info("Connecting to mongodb")
-	conn, err := mgo.Dial(cfg.MongoHost)
-	if err != nil {
-		log.WithField("err", err).Error("Could not connect to mongodb")
-		return
-	}
-	session := conn.DB("booksing")
-	if err != nil {
-		log.WithField("err", err).Error("Could not create booksing session")
-		return
+
+	var db database
+	if cfg.UseMongo {
+		db, err = newMongoDB(cfg.MongoHost)
+		if err != nil {
+			log.WithField("err", err).Fatal("could not create mongodb connection")
+		}
 	}
 	app := booksingApp{
-		books:          session.C("books"),
-		downloads:      session.C("downloads"),
-		refreshResults: session.C("refreshResults"),
-		allowDeletes:   cfg.AllowDeletes,
-		allowOrganize:  cfg.AllowOrganize,
-		bookDir:        cfg.BookDir,
-		importDir:      cfg.ImportDir,
+		db:            db,
+		allowDeletes:  cfg.AllowDeletes,
+		allowOrganize: cfg.AllowOrganize,
+		bookDir:       cfg.BookDir,
+		importDir:     cfg.ImportDir,
 	}
 	go app.refreshLoop()
 
 	http.HandleFunc("/refresh", app.refreshBooks())
 	http.HandleFunc("/search", app.getBooks())
-	http.HandleFunc("/duplicates.json", app.getDuplicates())
 	http.HandleFunc("/book.json", app.getBook())
 	http.HandleFunc("/user.json", app.getUser())
 	http.HandleFunc("/downloads.json", app.getDownloads())

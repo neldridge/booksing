@@ -1,6 +1,7 @@
 module github.com/gnur/booksing
 
 require (
+	github.com/anacrolix/missinggo v1.1.0
 	github.com/antzucaro/matchr v0.0.0-20180616170659-cbc221335f3c
 	github.com/beevik/etree v1.1.0
 	github.com/elazarl/go-bindata-assetfs v0.0.0-20180223160309-38087fe4dafb

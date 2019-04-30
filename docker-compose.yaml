@@ -9,10 +9,11 @@ services:
     build:
       context: .
     environment:
-      - MONGO_HOST=mongodb
-      - BOOK_DIR=/books
-      - REORGANIZE_BOOKS=true
-      - ALLOW_DELETES=true
-      - ANONYMOUS_ADMIN=yes
+      - BOOKSING_MONGOHOST=mongodb
+      - BOOKSING_BOOKDIR=/books
+      - BOOKSING_ALLOWORGANIZE=true
+      - BOOKSING_ALLOWDELETES=true
+      - BOOKSING_ANONYMOUS_ADMIN=yes
+      - BOOKSING_LOGLEVEL=debug
     ports:
      - 7132:7132

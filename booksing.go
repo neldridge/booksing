@@ -30,28 +30,6 @@ var (
 	errLocked = errors.New("already running")
 )
 
-type booksingApp struct {
-	books          *mgo.Collection
-	downloads      *mgo.Collection
-	refreshResults *mgo.Collection
-	allowDeletes   bool
-	allowOrganize  bool
-	bookDir        string
-	importDir      string
-}
-
-type db interface {
-	AddBook(*Book) error
-	GetBook(string) (*Book, error)
-	GetBooks(string) ([]*Book, error)
-
-	AddDownload(*download) error
-	GetDownloads(string) ([]*download, error)
-
-	AddRefresh(*RefreshResult) error
-	GetRefreshes([]*RefreshResult) error
-}
-
 func (app *booksingApp) refreshLoop() {
 	for {
 		app.refresh()
@@ -59,72 +37,15 @@ func (app *booksingApp) refreshLoop() {
 	}
 }
 
-func (app *booksingApp) createIndices() error {
-	indices := []mgo.Index{
-		mgo.Index{
-			Key:      []string{"hash"},
-			Unique:   true,
-			DropDups: true,
-		},
-		mgo.Index{
-			Key:      []string{"filepath"},
-			Unique:   true,
-			DropDups: true,
-		},
-		mgo.Index{
-			Key:      []string{"metaphone_keys"},
-			Unique:   false,
-			DropDups: false,
-		},
-		mgo.Index{
-			Key:      []string{"search_keys"},
-			Unique:   false,
-			DropDups: false,
-		},
-		mgo.Index{
-			Key:      []string{"author"},
-			Unique:   false,
-			DropDups: false,
-		},
-		mgo.Index{
-			Key:      []string{"title"},
-			Unique:   false,
-			DropDups: false,
-		},
-		mgo.Index{
-			Key:      []string{"date_added"},
-			Unique:   false,
-			DropDups: false,
-		},
-		mgo.Index{
-			Key:      []string{"language"},
-			Unique:   false,
-			DropDups: false,
-		},
-	}
-	for _, index := range indices {
-		err := app.books.EnsureIndex(index)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"index": index.Key,
-				"err":   err,
-			}).Error("Could not create index")
-		}
-	}
-
-	return nil
-
-}
-
 func (app *booksingApp) downloadBook() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fileName := r.URL.Query().Get("book")
 		toMobi := strings.HasSuffix(fileName, ".mobi")
-		var book Book
 		if toMobi {
 			fileName = strings.Replace(fileName, ".mobi", ".epub", 1)
 		}
-		err := app.books.Find(bson.M{"filename": fileName}).One(&book)
+
+		book, err := app.db.GetBook(fmt.Sprintf("filename: %s", fileName))
 		if err != nil {
 			log.WithFields(log.Fields{
 				"err":      err,
@@ -145,7 +66,7 @@ func (app *booksingApp) downloadBook() http.HandlerFunc {
 			Book:      book.Hash,
 			Timestamp: time.Now(),
 		}
-		err = app.downloads.Insert(dl)
+		err = app.db.AddDownload(dl)
 		log.WithFields(log.Fields{
 			"user": r.Header.Get("x-auth-user"),
 			"ip":   ip,
@@ -165,8 +86,7 @@ func (app *booksingApp) bookPresent() http.HandlerFunc {
 		author = fix(author, true, true)
 		hash := hashBook(author, title)
 
-		var book Book
-		err := app.books.Find(bson.M{"hash": hash}).One(&book)
+		_, err := app.db.GetBook(fmt.Sprintf("hash: %s", hash))
 		found := err == nil
 
 		json.NewEncoder(w).Encode(map[string]bool{"found": found})
@@ -176,8 +96,7 @@ func (app *booksingApp) bookPresent() http.HandlerFunc {
 func (app *booksingApp) getBook() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		hash := r.URL.Query().Get("hash")
-		var book Book
-		err := app.books.Find(bson.M{"hash": hash}).One(&book)
+		book, err := app.db.GetBook(fmt.Sprintf("hash: %s", hash))
 		if err != nil {
 			return
 		}
@@ -216,9 +135,7 @@ func (app *booksingApp) getDownloads() http.HandlerFunc {
 			json.NewEncoder(w).Encode([]bool{})
 			return
 		}
-		var downloads []download
-
-		app.downloads.Find(nil).Sort("-timestamp").Iter().All(&downloads)
+		downloads, _ := app.db.GetDownloads(200)
 
 		json.NewEncoder(w).Encode(downloads)
 	}
@@ -230,9 +147,7 @@ func (app *booksingApp) getRefreshes() http.HandlerFunc {
 			json.NewEncoder(w).Encode([]bool{})
 			return
 		}
-		var refreshes []RefreshResult
-
-		app.refreshResults.Find(nil).Sort("-starttime").Iter().All(&refreshes)
+		refreshes, _ := app.db.GetRefreshes(200)
 
 		json.NewEncoder(w).Encode(refreshes)
 	}
@@ -246,8 +161,7 @@ func (app *booksingApp) convertBook() http.HandlerFunc {
 			return
 		}
 		hash := r.Form.Get("hash")
-		var book Book
-		err = app.books.Find(bson.M{"hash": hash}).One(&book)
+		book, err := app.db.GetBook(fmt.Sprintf("hash: %s", hash))
 		if err != nil {
 			return
 		}
@@ -260,63 +174,10 @@ func (app *booksingApp) convertBook() http.HandlerFunc {
 			log.WithField("err", err).Error("Command finished with error")
 		} else {
 			book.HasMobi = true
-			app.books.Update(bson.M{"hash": hash}, book)
+			app.db.SetBookConverted(hash)
 			log.WithField("book", book.Filepath).Debug("conversion successful")
 		}
 		json.NewEncoder(w).Encode(book)
-	}
-}
-
-func (app *booksingApp) getDuplicates() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var resp bookResponse
-		var book Book
-		numResults, err := app.books.Count()
-		if err != nil {
-			log.WithField("err", err).Error("could not get total book count")
-		}
-		resp.TotalCount = numResults
-
-		pipe := app.books.Pipe([]bson.M{
-			bson.M{
-				"$group": bson.M{
-					"_id":   "$title",
-					"count": bson.M{"$sum": 1},
-					"docs":  bson.M{"$push": "$hash"},
-				},
-			},
-			bson.M{
-				"$match": bson.M{
-					"count": bson.M{"$gt": 1.0},
-				},
-			},
-			bson.M{
-				"$limit": 500,
-			},
-		})
-		iter := pipe.Iter()
-		var dupes []pipelineResult
-
-		err = iter.All(&dupes)
-		if err != nil {
-			log.WithField("err", err).Error("Could not get duplicates")
-		}
-
-		for _, dup := range dupes {
-			for _, hash := range dup.Hashes {
-				err := app.books.Find(bson.M{"hash": hash}).One(&book)
-				if err != nil {
-					continue
-				}
-				resp.Books = append(resp.Books, book)
-			}
-		}
-
-		if len(resp.Books) == 0 {
-			resp.Books = []Book{}
-		}
-
-		json.NewEncoder(w).Encode(resp)
 	}
 }
 
@@ -339,45 +200,16 @@ func (app *booksingApp) getBooks() http.HandlerFunc {
 				limit = a
 			}
 		}
-		numResults, err := app.books.Count()
-		if err != nil {
-			log.WithField("err", err).Error("could not get total book count")
-		}
-		resp.TotalCount = numResults
+		resp.TotalCount = app.db.BookCount()
 
-		resp.Books = app.filterBooks(filter, limit, true)
-		if len(resp.Books) == 0 {
-			resp.Books = app.filterBooks(filter, limit, false)
+		books, err := app.db.GetBooks(filter, limit)
+		if err != nil {
+			log.WithField("err", err).Error("error retrieving books")
 		}
-		if len(resp.Books) == 0 {
-			resp.Books = []Book{}
-		}
+		resp.Books = books
 
 		json.NewEncoder(w).Encode(resp)
 	}
-}
-
-func (app *booksingApp) filterBooks(filter string, limit int, exact bool) []Book {
-	var books []Book
-	var iter *mgo.Iter
-	if filter == "" {
-		iter = app.books.Find(bson.M{"language": "nl"}).Sort("-date_added").Limit(limit).Iter()
-	} else if strings.Contains(filter, ":") {
-		q := parseQuery(filter)
-		iter = app.books.Find(q).Limit(limit).Sort("author", "title").Iter()
-	} else if exact {
-		s := strings.Split(filter, " ")
-		iter = app.books.Find(bson.M{"search_keys": bson.M{"$all": s}}).Limit(limit).Sort("author", "title").Iter()
-	} else {
-		s := getMetaphoneKeys(filter)
-		iter = app.books.Find(bson.M{"metaphone_keys": bson.M{"$all": s}}).Limit(limit).Sort("author", "title").Iter()
-	}
-	err := iter.All(&books)
-	if err != nil {
-		log.WithField("err", err).Error("filtering books failed")
-		return []Book{}
-	}
-	return books
 }
 
 func (app *booksingApp) refresh() {
@@ -390,7 +222,6 @@ func (app *booksingApp) refresh() {
 	results := RefreshResult{
 		StartTime: time.Now(),
 	}
-	app.createIndices()
 	matches, err := zglob.Glob(filepath.Join(app.importDir, "/**/*.epub"))
 	if err != nil {
 		log.WithField("err", err).Error("glob of all books failed")
@@ -437,13 +268,13 @@ func (app *booksingApp) refresh() {
 		}
 
 	}
-	total, err := app.books.Count()
+	total := app.db.BookCount()
 	if err != nil {
 		log.WithField("err", err).Error("could not get total book count")
 	}
 	results.Old = total
 	results.StopTime = time.Now()
-	err = app.refreshResults.Insert(results)
+	err = app.db.AddRefresh(results)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err":     err,
@@ -461,9 +292,7 @@ func (app *booksingApp) refreshBooks() http.HandlerFunc {
 
 func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) {
 	for filename := range bookQ {
-		var dbBook Book
-		//err := db.One("Filepath", filename, &dbBook)
-		err := app.books.Find(bson.M{"filepath": filename}).One(&dbBook)
+		_, err := app.db.GetBook(fmt.Sprintf("filepath: %s", filename))
 		if err == nil {
 			resultQ <- OldBook
 			continue
@@ -481,7 +310,7 @@ func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) 
 			continue
 		}
 		book.ID = bson.NewObjectId()
-		err = app.books.Insert(book)
+		err = app.db.AddBook(book)
 		if err != nil && mgo.IsDup(err) {
 			if app.allowDeletes {
 				log.WithFields(log.Fields{
@@ -509,8 +338,7 @@ func (app *booksingApp) deleteBook() http.HandlerFunc {
 			return
 		}
 		hash := r.Form.Get("hash")
-		var book Book
-		err = app.books.Find(bson.M{"hash": hash}).One(&book)
+		book, err := app.db.GetBook(fmt.Sprintf("hash: %s", hash))
 		if err != nil {
 			return
 		}
@@ -527,7 +355,7 @@ func (app *booksingApp) deleteBook() http.HandlerFunc {
 			return
 		}
 
-		app.books.Remove(bson.M{"hash": hash})
+		err = app.db.DeleteBook(hash)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"hash": hash,
