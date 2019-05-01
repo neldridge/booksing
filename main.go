@@ -15,6 +15,8 @@ type configuration struct {
 	ImportDir     string `default:""`
 	MongoHost     string `default:"localhost"`
 	UseMongo      bool   `default:"true"`
+	UseFileDB     bool   `default:"false"`
+	FileDBPath    string `default:"booksing.db"`
 	LogLevel      string `default:"info"`
 }
 
@@ -40,6 +42,13 @@ func main() {
 			log.WithField("err", err).Fatal("could not create mongodb connection")
 		}
 	}
+	if cfg.UseFileDB {
+		db, err = newStormDB(cfg.FileDBPath)
+		if err != nil {
+			log.WithField("err", err).Fatal("could not create fileDB")
+		}
+	}
+
 	app := booksingApp{
 		db:            db,
 		allowDeletes:  cfg.AllowDeletes,

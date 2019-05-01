@@ -3,6 +3,7 @@ module github.com/gnur/booksing
 require (
 	github.com/anacrolix/missinggo v1.1.0
 	github.com/antzucaro/matchr v0.0.0-20180616170659-cbc221335f3c
+	github.com/asdine/storm v2.1.2+incompatible
 	github.com/beevik/etree v1.1.0
 	github.com/elazarl/go-bindata-assetfs v0.0.0-20180223160309-38087fe4dafb
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
@@ -12,6 +13,7 @@ require (
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/mattn/go-zglob v0.0.1
 	github.com/sirupsen/logrus v1.1.1
+	go.etcd.io/bbolt v1.3.2 // indirect
 	golang.org/x/crypto v0.0.0-20181030102418-4d3f4d9ffa16 // indirect
 	golang.org/x/net v0.0.0-20190301231341-16b79f2e4e95 // indirect
 	golang.org/x/sys v0.0.0-20181029174526-d69651ed3497 // indirect
