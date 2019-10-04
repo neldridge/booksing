@@ -1,48 +1,37 @@
 <template>
   <section>
-        <button 
-              class="button field is-info"
-              @click="refreshBooklist"
-              v-if="isAdmin">
-            <b-icon icon="refresh"></b-icon>
-            <span>{{ refreshButtonText }}</span>
-        </button>
-        <router-link :to="{ name: 'new' }" class="button field is-info">
-          search
-        </router-link>
+    <button class="button field is-info" @click="refreshBooklist" v-if="isAdmin">
+      <b-icon icon="refresh"></b-icon>
+      <span>{{ refreshButtonText }}</span>
+    </button>
+    <router-link :to="{ name: 'new' }" class="button field is-info">search</router-link>
     <b-tabs position="is-centered" class="block">
       <b-tab-item label="downloads">
-        <b-table
-        :data="downloads"
-        paginated
-        striped
-        narrowed
-        per-page="50">
-
-        <template slot-scope="props">
-          <b-table-column field="timestamp" label="timestamp">{{ formatDateTime(props.row.timestamp) }}</b-table-column>
-          <b-table-column field="user" label="user">{{ props.row.user }}</b-table-column>
-          <b-table-column field="book" label="book">{{ props.row.hash }}</b-table-column>
-        </template>
-      </b-table>
+        <b-table :data="downloads" paginated striped narrowed per-page="50">
+          <template slot-scope="props">
+            <b-table-column
+              field="timestamp"
+              label="timestamp"
+            >{{ formatDate(props.row.timestamp) }}</b-table-column>
+            <b-table-column field="user" label="user">{{ props.row.user }}</b-table-column>
+            <b-table-column field="book" label="book">{{ props.row.hash }}</b-table-column>
+          </template>
+        </b-table>
       </b-tab-item>
       <b-tab-item label="refreshes">
-        <b-table
-        :data="refreshes"
-        paginated
-        striped
-        narrowed
-        per-page="50">
-
-        <template slot-scope="props">
-          <b-table-column field="starttime" label="start">{{ formatDate(props.row.StartTime) }}</b-table-column>
-          <b-table-column field="runtime" label="runtime">{{ getDuration(props.row.StartTime, props.row.StopTime) }}</b-table-column>
-          <b-table-column field="old" label="old">{{ props.row.Old }}</b-table-column>
-          <b-table-column field="added" label="added">{{ props.row.Added }}</b-table-column>
-          <b-table-column field="duplicate" label="duplicate">{{ props.row.Duplicate }}</b-table-column>
-          <b-table-column field="invalid" label="invalid">{{ props.row.Invalid }}</b-table-column>
-        </template>
-      </b-table>
+        <b-table :data="refreshes" paginated striped narrowed per-page="50">
+          <template slot-scope="props">
+            <b-table-column field="starttime" label="start">{{ formatDate(props.row.StartTime) }}</b-table-column>
+            <b-table-column
+              field="runtime"
+              label="runtime"
+            >{{ getDuration(props.row.StartTime, props.row.StopTime) }}</b-table-column>
+            <b-table-column field="old" label="old">{{ props.row.Old }}</b-table-column>
+            <b-table-column field="added" label="added">{{ props.row.Added }}</b-table-column>
+            <b-table-column field="duplicate" label="duplicate">{{ props.row.Duplicate }}</b-table-column>
+            <b-table-column field="invalid" label="invalid">{{ props.row.Invalid }}</b-table-column>
+          </template>
+        </b-table>
       </b-tab-item>
     </b-tabs>
   </section>
@@ -71,12 +60,15 @@ export default {
   methods: {
     formatDate(dateStr) {
       var d = new Date(dateStr);
-      return d.toLocaleDateString("nl-NL", {
-        year: "numeric",
-        month: "long",
-        day: "numeric"
-      });
+      var input = new Date(dateStr);
+      var today = new Date();
+      if (d.setHours(0, 0, 0, 0) == today.setHours(0, 0, 0, 0)) {
+        return input.toLocaleTimeString("nl-NL", {});
+      } else {
+        return input.toLocaleString("nl-NL", {});
+      }
     },
+
     refreshBooklist: function() {
       var vm = this;
       vm.refreshButtonText = "Refreshing...";

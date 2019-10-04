@@ -245,7 +245,7 @@ func (db *fireDB) GetDownloads(limit int) ([]download, error) {
 	var dls []download
 	ctx := context.Background()
 	var d download
-	iter := db.client.Collection("refreshes").OrderBy("StartTime", firestore.Desc).Limit(limit).Documents(ctx)
+	iter := db.client.Collection("downloads").OrderBy("Timestamp", firestore.Desc).Limit(limit).Documents(ctx)
 	for {
 		d = download{}
 		doc, err := iter.Next()
