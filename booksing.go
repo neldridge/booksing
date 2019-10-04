@@ -43,7 +43,7 @@ func (app *booksingApp) downloadBook() http.HandlerFunc {
 			fileName = strings.Replace(fileName, ".mobi", ".epub", 1)
 		}
 
-		book, err := app.db.GetBook(fmt.Sprintf("filename: %s", fileName))
+		book, err := app.db.GetBookBy("Filename", fileName)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"err":      err,
@@ -87,7 +87,7 @@ func (app *booksingApp) bookPresent() http.HandlerFunc {
 		author = fix(author, true, true)
 		hash := hashBook(author, title)
 
-		_, err := app.db.GetBook(fmt.Sprintf("hash: %s", hash))
+		_, err := app.db.GetBookBy("Hash", hash)
 		found := err == nil
 
 		json.NewEncoder(w).Encode(map[string]bool{"found": found})
@@ -97,7 +97,7 @@ func (app *booksingApp) bookPresent() http.HandlerFunc {
 func (app *booksingApp) getBook() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		hash := r.URL.Query().Get("hash")
-		book, err := app.db.GetBook(fmt.Sprintf("hash: %s", hash))
+		book, err := app.db.GetBookBy("Hash", hash)
 		if err != nil {
 			return
 		}
@@ -162,7 +162,7 @@ func (app *booksingApp) convertBook() http.HandlerFunc {
 			return
 		}
 		hash := r.Form.Get("hash")
-		book, err := app.db.GetBook(fmt.Sprintf("hash: %s", hash))
+		book, err := app.db.GetBookBy("Hash", hash)
 		if err != nil {
 			return
 		}
@@ -292,7 +292,7 @@ func (app *booksingApp) refreshBooks() http.HandlerFunc {
 
 func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) {
 	for filename := range bookQ {
-		_, err := app.db.GetBook(fmt.Sprintf("filepath: %s", filename))
+		_, err := app.db.GetBookBy("Filepath", filename)
 		if err == nil {
 			resultQ <- OldBook
 			continue
@@ -344,7 +344,7 @@ func (app *booksingApp) deleteBook() http.HandlerFunc {
 			return
 		}
 		hash := r.Form.Get("hash")
-		book, err := app.db.GetBook(fmt.Sprintf("hash: %s", hash))
+		book, err := app.db.GetBookBy("Hash", hash)
 		if err != nil {
 			return
 		}

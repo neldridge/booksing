@@ -1,15 +1,23 @@
 #!/bin/bash
 
+workingdir=$(mktemp -d)
+
 function log {
     echo "> $(date +%T) $*"
 }
 
-trap 'kill $(jobs -p)' EXIT
+function cleanup {
+    log "Killing booksing"
+    kill $(jobs -p)
+    log "Removing old workdir"
+    rm -rf workingdir
+}
+
+trap 'cleanup' EXIT
 
 log "building binary"
 go build -o booksing .
 
-workingdir=$(mktemp -d)
 log "Creating temp workspace in ${workingdir}"
 cp -a testdata $workingdir
 

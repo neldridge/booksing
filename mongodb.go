@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/globalsign/mgo"
@@ -43,6 +42,11 @@ func newMongoDB(host string) (*mongoDB, error) {
 }
 func (db *mongoDB) Close() {}
 
+func (db *mongoDB) GetBookBy(field, value string) (*Book, error) {
+	//TODO: actually implement this
+	return nil, nil
+}
+
 func (db *mongoDB) AddBook(b *Book) error {
 	err := db.books.Insert(b)
 
@@ -71,7 +75,7 @@ func (db *mongoDB) DeleteBook(hash string) error {
 }
 
 func (db *mongoDB) SetBookConverted(hash string) error {
-	book, _ := db.GetBook(fmt.Sprintf("hash: %s", hash))
+	book, _ := db.GetBookBy("Hash", hash)
 	book.HasMobi = true
 
 	return db.books.Update(bson.M{"hash": hash}, book)

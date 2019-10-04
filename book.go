@@ -34,6 +34,24 @@ type Book struct {
 	Added         time.Time `bson:"date_added" json:"date_added" storm:"index"`
 }
 
+func (b *Book) HasSearchWords(terms []string) bool {
+	for _, term := range terms {
+		if !contains(b.SearchWords, term) {
+			return false
+		}
+	}
+	return true
+}
+
+func (b *Book) HasMetaphoneKeys(terms []string) bool {
+	for _, term := range terms {
+		if !contains(b.MetaphoneKeys, term) {
+			return false
+		}
+	}
+	return true
+}
+
 // NewBookFromFile creates a book object from a file
 func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, err error) {
 	epub, err := epub.ParseFile(bookpath)
@@ -211,4 +229,13 @@ func fix(s string, capitalize, correctOrder bool) string {
 		}
 		return in
 	}, s)
+}
+
+func contains(haystack []string, needle string) bool {
+	for _, s := range haystack {
+		if s == needle {
+			return true
+		}
+	}
+	return false
 }

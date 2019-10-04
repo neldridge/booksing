@@ -66,6 +66,8 @@ type database interface {
 	GetBooks(string, int) ([]Book, error)
 	SetBookConverted(string) error
 
+	GetBookBy(string, string) (*Book, error)
+
 	AddDownload(download) error
 	GetDownloads(int) ([]download, error)
 

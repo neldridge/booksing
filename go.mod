@@ -20,5 +20,6 @@ require (
 	go.etcd.io/bbolt v1.3.2 // indirect
 	golang.org/x/text v0.3.2
 	golang.org/x/tools v0.0.0-20190628153133-6cdbf07be9d0
+	google.golang.org/api v0.7.0
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )

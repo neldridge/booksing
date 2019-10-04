@@ -92,6 +92,10 @@ func (db *stormDB) getRecentBooks(limit int) ([]Book, error) {
 func (db *stormDB) AddDownload(dl download) error {
 	return db.db.Save(&dl)
 }
+func (db *stormDB) GetBookBy(field, value string) (*Book, error) {
+	//TODO: actually implement this
+	return nil, nil
+}
 func (db *stormDB) GetDownloads(limit int) ([]download, error) {
 	var dls []download
 	err := db.db.All(&dls)
