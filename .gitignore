@@ -9,3 +9,4 @@ web/node_modules/*
 testdata/odd-collection/*
 .idea
 *.db
+booksing-creds.json

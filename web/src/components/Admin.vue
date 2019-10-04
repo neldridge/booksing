@@ -81,7 +81,7 @@ export default {
       var vm = this;
       vm.refreshButtonText = "Refreshing...";
       axios
-        .get("/refresh")
+        .get("/api/refresh")
         .then(function(response) {
           vm.refreshButtonText = "refresh";
           vm.getRefreshes();
@@ -94,7 +94,7 @@ export default {
     getUser: function() {
       var vm = this;
       axios
-        .get("/user.json")
+        .get("/api/user.json")
         .then(function(response) {
           vm.isAdmin = response.data.admin;
         })
@@ -136,7 +136,7 @@ export default {
     getDownloads: function() {
       var vm = this;
       axios
-        .get("/downloads.json")
+        .get("/api/downloads.json")
         .then(function(response) {
           if (response.data !== null) {
             vm.downloads = response.data;
@@ -151,7 +151,7 @@ export default {
     getRefreshes: function() {
       var vm = this;
       axios
-        .get("/refreshes.json")
+        .get("/api/refreshes.json")
         .then(function(response) {
           vm.refreshes = response.data;
         })

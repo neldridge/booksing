@@ -1,77 +1,74 @@
 <template>
-<div id="app" class="container">
-
-<nav class="level">
-          <b-field>
-            <b-input placeholder="Search..."
-                type="search"
-                v-model="searchstring"
-                id="search"
-                size="is-medium"
-                icon="magnify">
-            </b-input>
-        </b-field>
-        <button 
-              class="button field is-danger"
-              @click="deleteSelectedBooks"
-              v-if="isAdmin && checkedRows.length > 0">
-            <b-icon icon="delete"></b-icon>
-            <span>Delete selected ({{ checkedRows.length }})</span>
-        </button>
-        <router-link v-if="isAdmin" :to="{ name: 'admin' }" class="button field is-info">
-          admin
-        </router-link>
+  <div id="app" class="container">
+    <nav class="level">
+      <b-field>
+        <b-input
+          placeholder="Search..."
+          type="search"
+          v-model="searchstring"
+          id="search"
+          size="is-medium"
+          icon="magnify"
+        ></b-input>
+      </b-field>
+      <button
+        class="button field is-danger"
+        @click="deleteSelectedBooks"
+        v-if="isAdmin && checkedRows.length > 0"
+      >
+        <b-icon icon="delete"></b-icon>
+        <span>Delete selected ({{ checkedRows.length }})</span>
+      </button>
+      <router-link v-if="isAdmin" :to="{ name: 'admin' }" class="button field is-info">admin</router-link>
     </nav>
-  
-  <div class="section">
-    <b-table
-      :data="books"
-      paginated
-      striped
-      narrowed
-      detailed
-      :has-detailed-visible="showDetailed"
-      :checked-rows.sync="checkedRows"
-      :checkable="isAdmin"
-      :loading="isLoading"
-      per-page="50">
 
-      <template slot-scope="props">
-        <b-table-column field="author" label="author">{{ props.row.author }}</b-table-column>
-        <b-table-column field="title" label="title">{{ props.row.title }}</b-table-column>
-        <b-table-column field="language" label="language">{{ props.row.language }}</b-table-column>
-        <b-table-column field="added" label="added">{{ formatDate(props.row.date_added) }}</b-table-column>
-        <b-table-column field="dl" label="epub"><a :href="'/download/?book=' + props.row.filename">download</a></b-table-column>
-        <b-table-column 
-            field="convert"
-            label="mobi"
-            :visible="isAdmin">
-          <a v-if="props.row.hasmobi" :href="'/download/?book=' + props.row.filename.replace('.epub', '.mobi')">.mobi</a>
-          <a v-else @click="convertBook(props.row.hash)">convert</a>
-        </b-table-column>
-      </template>
-      <template slot="detail" slot-scope="props">
-        <span v-html="formatFullMessage(props.row.description)"/><br />
-      </template>
+    <div class="section">
+      <b-table
+        :data="books"
+        paginated
+        striped
+        narrowed
+        detailed
+        :has-detailed-visible="showDetailed"
+        :checked-rows.sync="checkedRows"
+        :checkable="isAdmin"
+        :loading="isLoading"
+        per-page="50"
+      >
+        <template slot-scope="props">
+          <b-table-column field="author" label="author">{{ props.row.author }}</b-table-column>
+          <b-table-column field="title" label="title">{{ props.row.title }}</b-table-column>
+          <b-table-column field="language" label="language">{{ props.row.language }}</b-table-column>
+          <b-table-column field="added" label="added">{{ formatDate(props.row.date_added) }}</b-table-column>
+          <b-table-column field="dl" label="epub">
+            <a :href="'/download/?book=' + props.row.filename">download</a>
+          </b-table-column>
+          <b-table-column field="convert" label="mobi" :visible="isAdmin">
+            <a
+              v-if="props.row.hasmobi"
+              :href="'/download/?book=' + props.row.filename.replace('.epub', '.mobi')"
+            >.mobi</a>
+            <a v-else @click="convertBook(props.row.hash)">convert</a>
+          </b-table-column>
+        </template>
+        <template slot="detail" slot-scope="props">
+          <span v-html="formatFullMessage(props.row.description)" />
+          <br />
+        </template>
 
-      <template slot="empty">
+        <template slot="empty">
           <section class="section">
-              <div class="content has-text-grey has-text-centered">
-                  <p>
-                      <b-icon
-                          icon="emoticon-sad"
-                          size="is-large">
-                      </b-icon>
-                  </p>
-                  <p>Nothing here.</p>
-              </div>
+            <div class="content has-text-grey has-text-centered">
+              <p>
+                <b-icon icon="emoticon-sad" size="is-large"></b-icon>
+              </p>
+              <p>Nothing here.</p>
+            </div>
           </section>
-      </template>
-    </b-table>
-      
-     
+        </template>
+      </b-table>
+    </div>
   </div>
-</div>
 </template>
 
 <script>
@@ -129,7 +126,7 @@ export default {
       const params = new URLSearchParams();
       params.append("hash", hash);
       axios
-        .post("/convert/", params)
+        .post("/api/convert/", params)
         .then(function(response) {
           vm.getBooks();
           console.log(response);
@@ -156,9 +153,7 @@ export default {
           .then(function(response) {
             vm.books = response.data.books;
             vm.total = response.data.total;
-            document.title = `booksing - ${
-              vm.total
-            } books available for searching`;
+            document.title = `booksing - ${vm.total} books available for searching`;
             vm.isLoading = false;
             vm.checkedRows = [];
           })
@@ -178,7 +173,7 @@ export default {
         const params = new URLSearchParams();
         params.append("hash", book.hash);
         axios
-          .post("/delete/", params)
+          .post("/api/delete/", params)
           .then(function(response) {
             vm.getBooks();
           })
@@ -191,7 +186,7 @@ export default {
       var vm = this;
       vm.refreshButtonText = "Refreshing...";
       axios
-        .get("/refresh")
+        .get("/api/refresh")
         .then(function(response) {
           vm.refreshButtonText = "refresh";
           vm.getBooks();
@@ -204,7 +199,7 @@ export default {
     getUser: function() {
       var vm = this;
       axios
-        .get("/user.json")
+        .get("/api/user.json")
         .then(function(response) {
           vm.isAdmin = response.data.admin;
         })
