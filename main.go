@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"path"
+	"strings"
 
 	"github.com/kelseyhightower/envconfig"
 	log "github.com/sirupsen/logrus"
@@ -13,11 +14,9 @@ type configuration struct {
 	AllowOrganize bool
 	BookDir       string `default:"."`
 	ImportDir     string `default:""`
-	MongoHost     string `default:"localhost"`
-	UseMongo      bool   `default:"true"`
-	UseFileDB     bool   `default:"false"`
-	FileDBPath    string `default:"booksing.db"`
+	Database      string `default:"file://booksing.db"`
 	LogLevel      string `default:"info"`
+	BindAddress   string `default:"localhost:7132"`
 }
 
 func main() {
@@ -36,17 +35,28 @@ func main() {
 	}
 
 	var db database
-	if cfg.UseMongo {
-		db, err = newMongoDB(cfg.MongoHost)
+	if strings.HasPrefix(cfg.Database, "mongo://") {
+		log.WithField("mongohost", cfg.Database).Debug("connectiong to mongodb")
+		db, err = newMongoDB(cfg.Database)
 		if err != nil {
 			log.WithField("err", err).Fatal("could not create mongodb connection")
 		}
-	}
-	if cfg.UseFileDB {
-		db, err = newStormDB(cfg.FileDBPath)
+	} else if strings.HasPrefix(cfg.Database, "firestore://") {
+		log.WithField("project", cfg.Database).Debug("using firestore")
+		project := strings.TrimPrefix(cfg.Database, "firestore://")
+		db, err = newFireStore(project)
+		if err != nil {
+			log.WithField("err", err).Fatal("could not create firestore client")
+		}
+	} else if strings.HasPrefix(cfg.Database, "file://") {
+		log.WithField("filedbpath", cfg.Database).Debug("using this file")
+		db, err = newStormDB(cfg.Database)
 		if err != nil {
 			log.WithField("err", err).Fatal("could not create fileDB")
 		}
+		defer db.Close()
+	} else {
+		log.Fatal("Please set either a mongo host or filedb path")
 	}
 
 	app := booksingApp{
@@ -71,5 +81,5 @@ func main() {
 	http.Handle("/", http.FileServer(assetFS()))
 
 	log.Info("booksing is now running")
-	log.Fatal(http.ListenAndServe(":7132", nil))
+	log.Fatal(http.ListenAndServe(cfg.BindAddress, nil))
 }

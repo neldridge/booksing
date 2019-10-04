@@ -26,4 +26,5 @@ RUN go build -ldflags "-linkmode external -extldflags -static" -o booksing *.go
 FROM gnur/calibre:2018-07-10
 COPY /testdata /books
 COPY --from=builder /go/src/github.com/gnur/booksing/booksing /
+COPY .idea/booksing-erwin-land-1e12c348495e.json /creds.json
 CMD [ "/booksing" ]

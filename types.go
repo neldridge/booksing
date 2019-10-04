@@ -27,6 +27,7 @@ const (
 
 // RefreshResult holds the result of a full refresh
 type RefreshResult struct {
+	ID        int `storm:"id,increment"`
 	StartTime time.Time
 	StopTime  time.Time
 	Old       int
@@ -36,6 +37,7 @@ type RefreshResult struct {
 }
 
 type download struct {
+	ID        int       `storm:"id,increment"`
 	Book      string    `json:"hash"`
 	User      string    `json:"user"`
 	IP        string    `json:"ip"`
@@ -69,4 +71,5 @@ type database interface {
 
 	AddRefresh(RefreshResult) error
 	GetRefreshes(int) ([]RefreshResult, error)
+	Close()
 }

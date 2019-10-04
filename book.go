@@ -10,7 +10,6 @@ import (
 
 	"strings"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/gnur/booksing/epub"
 	"github.com/kennygrant/sanitize"
 )
@@ -21,18 +20,18 @@ var filenameSafe = regexp.MustCompile("[^a-zA-Z0-9 -]+")
 
 // Book represents a book record in the database, regular "book" data with extra metadata
 type Book struct {
-	ID            bson.ObjectId `json:"id"`
-	Hash          string        `json:"hash" storm:"index"`
-	Title         string        `json:"title" storm:"index"`
-	Author        string        `json:"author" storm:"index"`
-	Language      string        `json:"language" storm:"index"`
-	Description   string        `json:"description"`
-	Filepath      string        `json:"filepath" storm:"index"`
-	Filename      string        `json:"filename" storm:"index"`
-	HasMobi       bool          `json:"hasmobi"`
-	MetaphoneKeys []string      `bson:"metaphone_keys"`
-	SearchWords   []string      `bson:"search_keys"`
-	Added         time.Time     `bson:"date_added" json:"date_added" storm:"index"`
+	ID            int       `json:"stormid" storm:"id,increment"`
+	Hash          string    `json:"hash" storm:"index"`
+	Title         string    `json:"title" storm:"index"`
+	Author        string    `json:"author" storm:"index"`
+	Language      string    `json:"language" storm:"index"`
+	Description   string    `json:"description"`
+	Filepath      string    `json:"filepath" storm:"index"`
+	Filename      string    `json:"filename" storm:"index"`
+	HasMobi       bool      `json:"hasmobi"`
+	MetaphoneKeys []string  `bson:"metaphone_keys"`
+	SearchWords   []string  `bson:"search_keys"`
+	Added         time.Time `bson:"date_added" json:"date_added" storm:"index"`
 }
 
 // NewBookFromFile creates a book object from a file

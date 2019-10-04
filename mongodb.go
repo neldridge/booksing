@@ -41,9 +41,9 @@ func newMongoDB(host string) (*mongoDB, error) {
 
 	return &database, nil
 }
+func (db *mongoDB) Close() {}
 
 func (db *mongoDB) AddBook(b *Book) error {
-	b.ID = bson.NewObjectId()
 	err := db.books.Insert(b)
 
 	if mgo.IsDup(err) {

@@ -9,11 +9,13 @@ services:
     build:
       context: .
     environment:
-      - BOOKSING_MONGOHOST=mongodb
       - BOOKSING_BOOKDIR=/books
       - BOOKSING_ALLOWORGANIZE=true
       - BOOKSING_ALLOWDELETES=true
       - BOOKSING_ANONYMOUS_ADMIN=yes
       - BOOKSING_LOGLEVEL=debug
+      - BOOKSING_DATABASE=firestore://booksing-erwin-land
+      - BOOKSING_BINDADDRESS=:7132
+      - GOOGLE_APPLICATION_CREDENTIALS=/creds.json
     ports:
      - 7132:7132

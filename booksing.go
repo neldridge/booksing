@@ -310,15 +310,22 @@ func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) 
 			continue
 		}
 		err = app.db.AddBook(book)
-		if err != nil && err == ErrDuplicate {
-			if app.allowDeletes {
-				log.WithFields(log.Fields{
-					"file":   filename,
-					"reason": "duplicate",
-				}).Info("Deleting book")
-				os.Remove(filename)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"file": filename,
+				"err":  err,
+			}).Error("could not store book")
+
+			if err == ErrDuplicate {
+				if app.allowDeletes {
+					log.WithFields(log.Fields{
+						"file":   filename,
+						"reason": "duplicate",
+					}).Info("Deleting book")
+					os.Remove(filename)
+				}
+				resultQ <- DuplicateBook
 			}
-			resultQ <- DuplicateBook
 		} else {
 			resultQ <- AddedBook
 		}
