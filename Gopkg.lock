@@ -19,6 +19,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:e2750240971714d4cfda0b593b5f6b5fcb46798e5b6b721b930af4ad22fb9075"
+  name = "github.com/elazarl/go-bindata-assetfs"
+  packages = ["."]
+  pruneopts = ""
+  revision = "38087fe4dafb822e541b3f7955075cc1c30bd294"
+
+[[projects]]
+  branch = "master"
   digest = "1:e9ffb9315dce0051beb757d0f0fc25db57c4da654efc4eada4ea109c2d9da815"
   name = "github.com/globalsign/mgo"
   packages = [
@@ -61,10 +69,7 @@
 [[projects]]
   digest = "1:5f48b818f16848d05cf74f4cbdd0cbe9e0dcddb3c459b4c510c6e2c8e1b4dff1"
   name = "github.com/sirupsen/logrus"
-  packages = [
-    ".",
-    "hooks/syslog",
-  ]
+  packages = ["."]
   pruneopts = ""
   revision = "ad15b42461921f1fb3529b058c6786c6a45d5162"
   version = "v1.1.1"
@@ -132,12 +137,12 @@
   input-imports = [
     "github.com/antzucaro/matchr",
     "github.com/beevik/etree",
+    "github.com/elazarl/go-bindata-assetfs",
     "github.com/globalsign/mgo",
     "github.com/globalsign/mgo/bson",
     "github.com/kennygrant/sanitize",
     "github.com/mattn/go-zglob",
     "github.com/sirupsen/logrus",
-    "github.com/sirupsen/logrus/hooks/syslog",
     "golang.org/x/text/runes",
     "golang.org/x/text/transform",
     "golang.org/x/text/unicode/norm",

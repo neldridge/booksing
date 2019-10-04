@@ -1,112 +1,74 @@
 <template>
-<div id="app" class="container">
-
-<nav class="level">
-    <form action="javascript:void()" onsubmit="return false">
-      <div class="level-item">
-        <div class="field has-addons">
-          <p class="control">
-          <input class="input" v-model="searchstring" id="search" placeholder="type here to search" type="text">
-          </p>
-          <p class="control">
-            <button class="button">
-              Search
-            </button>
-          </p>
-        </div>
-      </div>
-    </form>
-    <!--
-      <div class="level-item">
-        <a class="button" v-on:click.stop="toggleSettings">settings</a>
-      </div>
-      -->
+  <div id="app" class="container">
+    <nav class="level">
+      <b-field>
+        <b-input
+          placeholder="Search..."
+          type="search"
+          v-model="searchstring"
+          id="search"
+          size="is-medium"
+          icon="magnify"
+        ></b-input>
+      </b-field>
+      <button
+        class="button field is-danger"
+        @click="deleteSelectedBooks"
+        v-if="isAdmin && checkedRows.length > 0"
+      >
+        <b-icon icon="delete"></b-icon>
+        <span>Delete selected ({{ checkedRows.length }})</span>
+      </button>
+      <router-link v-if="isAdmin" :to="{ name: 'admin' }" class="button field is-info">admin</router-link>
     </nav>
-  
-  <div class="modal" id="settings">
-    <div class="modal-background"></div>
-    <div class="modal-content">
-      <div class="card">
-        <div class="card-content">
-          <p class="subtitle"> werkt t beter</p>
-          <p class="subtitle"> met echte content?</p>
-        </div>
-        <footer class="card-footer">
-          <a class="card-footer-item" v-on:click.stop="refreshBooklist">
-            {{ refreshButtonText }}
-          </a>
-          <a class="card-footer-item">
-            save
-          </a>
-        </footer>
-      </div>
-    </div>
-    <button class="modal-close is-large" aria-label="close" v-on:click.stop="toggleSettings"></button>
-  </div>
 
-  <div class="section">
-        <table class="table is-striped is-narrow is-hoverable is-fullwidth">
-          <thead>
-            <tr>
-              <th>author</th>
-              <th>title</th>
-              <th>language</th>
-              <th>added</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <template v-for="book in books">
-            <tr v-bind:key="book.hash">
-              <td>{{ book.author }}</td>
-              <td>{{ book.title }}</td>
-              <td>{{ book.language }}</td>
-              <td>{{ book.date_added }}</td>
-              <td><a v-on:click.stop="toggleModal(book.hash)">description</a>
-               <div class="modal" :id="book.hash">
-                 <div class="modal-background"></div>
-                 <div class="modal-content">
-                   <!-- Any other Bulma elements you want -->
-                   <div class="card">
-                 <div class="card-content">
-                   <p class="subtitle">
-                     {{ book.author }}
-                   </p>
-                   <p class="subtitle">
-                     {{ book.title }}
-                   </p>
-                   {{ book.description }}
-                 </div>
-                 <footer class="card-footer">
-                   <a class="card-footer-item" :href="'/download/?book=' + book.filename">
-                     download .epub
-                   </a>
-                   <a class="card-footer-item" v-if="book.hasmobi" :href="'/download/?book=' + book.filename.replace('epub', 'mobi')">
-                     download .mobi
-                   </a>
-                   <a class="card-footer-item" v-else v-on:click.stop="convertBook(book.hash)">
-                     <template v-if="converting">
-                       <a class="button is-info is-loading">
-                         converting
-                       </a>
-                     </template>
-                     <template v-else>
-                       convert
-                     </template>
-                   </a>
-                 </footer>
-               </div>
-                 </div>
-                 <button class="modal-close is-large" aria-label="close" v-on:click.stop="toggleModal(book.hash)"></button>
-               </div>
-              </td>
-            </tr>
-            </template>
-          </tbody>
-        </table>
-     
+    <div class="section">
+      <b-table
+        :data="books"
+        paginated
+        striped
+        narrowed
+        detailed
+        :has-detailed-visible="showDetailed"
+        :checked-rows.sync="checkedRows"
+        :checkable="isAdmin"
+        :loading="isLoading"
+        per-page="50"
+      >
+        <template slot-scope="props">
+          <b-table-column field="author" label="author">{{ props.row.author }}</b-table-column>
+          <b-table-column field="title" label="title">{{ props.row.title }}</b-table-column>
+          <b-table-column field="language" label="language">{{ props.row.language }}</b-table-column>
+          <b-table-column field="added" label="added">{{ formatDate(props.row.date_added) }}</b-table-column>
+          <b-table-column field="dl" label="epub">
+            <a :href="'/api/download/?book=' + props.row.filename">download</a>
+          </b-table-column>
+          <b-table-column field="convert" label="mobi" :visible="isAdmin">
+            <a
+              v-if="props.row.hasmobi"
+              :href="'/api/download/?book=' + props.row.filename.replace('.epub', '.mobi')"
+            >.mobi</a>
+            <a v-else @click="convertBook(props.row.hash)">convert</a>
+          </b-table-column>
+        </template>
+        <template slot="detail" slot-scope="props">
+          <span v-html="formatFullMessage(props.row.description)" />
+          <br />
+        </template>
+
+        <template slot="empty">
+          <section class="section">
+            <div class="content has-text-grey has-text-centered">
+              <p>
+                <b-icon icon="emoticon-sad" size="is-large"></b-icon>
+              </p>
+              <p>Nothing here.</p>
+            </div>
+          </section>
+        </template>
+      </b-table>
+    </div>
   </div>
-</div>
 </template>
 
 <script>
@@ -120,72 +82,83 @@ export default {
       searchstring: "",
       books: [],
       total: 0,
-      converting: false,
-      searchDone: false,
+      checkedRows: [],
+      isLoading: true,
+      isAdmin: false,
       refreshButtonText: "refresh"
     };
   },
   watch: {
     // whenever question changes, this function will run
     searchstring: function() {
+      this.isLoading = true;
       this.getBooks();
     }
   },
   mounted: function() {
+    this.getUser();
     this.getBooks();
   },
 
   methods: {
+    formatFullMessage(description) {
+      return (
+        "<span>" +
+        description.replace(/([^>\r\n]?)(\r\n|\n\r|\r|\n)/g, "$1<br>$2") +
+        "</span>"
+      );
+    },
+    formatDate(dateStr) {
+      var d = new Date(dateStr);
+      return d.toLocaleDateString("nl-NL", {
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      });
+    },
+    showDetailed(book) {
+      return book.description != "";
+    },
     convertBook: function(hash) {
       console.log(hash);
       var vm = this;
-      this.converting = true;
+      vm.isLoading = true;
       const params = new URLSearchParams();
       params.append("hash", hash);
       axios
-        .post("/convert/", params)
+        .post("/api/convert/", params)
         .then(function(response) {
           vm.getBooks();
           console.log(response);
-          vm.converting = false;
         })
         .catch(function(error) {
-          vm.converting = false;
           console.log(error);
         });
-    },
-    toggleSettings: function(hash) {
-      var modal = document.getElementById("settings");
-      modal.classList.toggle("is-active");
-    },
-    toggleModal: function(hash) {
-      var modal = document.getElementById(hash);
-      modal.classList.toggle("is-active");
-      console.log(hash);
     },
     getBooks: lodash.debounce(
       function() {
         var vm = this;
-        vm.searchDone = false;
         vm.statusMessage = "getting results";
-        var uri = "/search";
+        var uri = "/api/search";
         if (this.searchstring == "/dups") {
-          uri = "/duplicates.json";
+          uri = "/api/duplicates.json";
         }
         axios
           .get(uri, {
             params: {
               filter: this.searchstring,
-              results: 100
+              results: 500
             }
           })
           .then(function(response) {
             vm.books = response.data.books;
+            if (vm.books === null) {
+              vm.books = [];
+            }
             vm.total = response.data.total;
-            document.title = `booksing - ${
-              vm.total
-            } books available for searching`;
-            vm.searchDone = true;
+            document.title = `booksing - ${vm.total} books available for searching`;
+            vm.isLoading = false;
+            vm.checkedRows = [];
           })
           .catch(function(error) {
             vm.statusMessage = "Something went wrong";
@@ -196,19 +169,44 @@ export default {
       // user to stop typing.
       500
     ),
+    deleteSelectedBooks: function() {
+      var vm = this;
+      vm.isLoading = true;
+      for (var book of vm.checkedRows) {
+        const params = new URLSearchParams();
+        params.append("hash", book.hash);
+        axios
+          .post("/api/delete/", params)
+          .then(function(response) {
+            vm.getBooks();
+          })
+          .catch(function(error) {
+            console.log(error);
+          });
+      }
+    },
     refreshBooklist: function() {
       var vm = this;
       vm.refreshButtonText = "Refreshing...";
       axios
-        .get("/refresh")
+        .get("/api/refresh")
         .then(function(response) {
           vm.refreshButtonText = "refresh";
           vm.getBooks();
-          var modal = document.getElementById("settings");
-          modal.classList.remove("is-active");
         })
         .catch(function(error) {
           vm.refreshButtonText = "refresh";
+          console.log(error);
+        });
+    },
+    getUser: function() {
+      var vm = this;
+      axios
+        .get("/api/user.json")
+        .then(function(response) {
+          vm.isAdmin = response.data.admin;
+        })
+        .catch(function(error) {
           console.log(error);
         });
     }
