@@ -14,8 +14,6 @@ import (
 	"github.com/gnur/booksing/firestore"
 	_ "github.com/gnur/booksing/firestore"
 
-	//	"github.com/gnur/booksing/mongodb"
-	//	_ "github.com/gnur/booksing/mongodb"
 	//	"github.com/gnur/booksing/storm"
 	//	_ "github.com/gnur/booksing/storm"
 	"github.com/kelseyhightower/envconfig"
@@ -36,7 +34,6 @@ type configuration struct {
 	Timezone      string `default:"Europe/Amsterdam"`
 	Mode          string `default:"dev"`
 	FQDN          string `default:"localhost:8080"`
-	TopicName     string `default:"convert-book"`
 }
 
 func main() {
@@ -141,11 +138,6 @@ func main() {
 		auth.GET("user.json", app.getUser)
 		auth.GET("stats", app.getStats)
 
-		auth.GET("/apikey", app.getAPIKeys)
-		auth.POST("/apikey", app.addAPIKey)
-		auth.DELETE("/apikey/:uuid", app.deleteAPIKey)
-
-		auth.POST("convert", app.convertBook)
 		auth.GET("download", app.downloadBook)
 
 	}
@@ -154,20 +146,10 @@ func main() {
 	admin.Use(gin.Recovery(), app.BearerTokenMiddleware(), app.mustBeAdmin())
 	{
 		admin.GET("downloads.json", app.getDownloads)
-		admin.GET("refreshes.json", app.getRefreshes)
 		admin.GET("users", app.getUsers)
 		admin.POST("user/:username", app.updateUser)
 		admin.POST("refresh", app.refreshBooks)
 		admin.POST("delete", app.deleteBook)
-	}
-
-	api := r.Group("/api")
-	api.Use(gin.Recovery(), app.APIKeyMiddleware())
-	{
-		api.GET("exists/:author/:title", app.bookPresent)
-		api.PUT("book", app.addBook)
-		api.PUT("books", app.addBooks)
-		api.PUT("book/:hash/:type", app.addLocation)
 	}
 
 	log.Info("booksing is now running")

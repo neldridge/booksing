@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -216,121 +215,6 @@ func (app *booksingApp) updateUser(c *gin.Context) {
 	c.JSON(200, gin.H{"text": "ok"})
 }
 
-func (app *booksingApp) getRefreshes(c *gin.Context) {
-	refreshes, _ := app.db.GetRefreshes(200)
-	c.JSON(200, refreshes)
-}
-
-func (app *booksingApp) convertBook(c *gin.Context) {
-	var req deleteRequest
-	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(400, gin.H{
-			"text": err.Error(),
-		})
-		return
-	}
-	app.logger.WithField("req", req).Info("got delete request")
-	hash := req.Hash
-
-	book, err := app.db.GetBookBy("Hash", hash)
-	if err != nil {
-		c.JSON(500, gin.H{
-			"text": err.Error(),
-		})
-		return
-	}
-	if _, exists := book.Locations["mobi"]; exists {
-		app.logger.WithField("hash", hash).Info("book already exists")
-		c.JSON(200, book)
-		return
-	}
-
-	epub, exists := book.Locations["epub"]
-	if !exists {
-		c.JSON(500, gin.H{
-			"text": "internal server error",
-		})
-		return
-	}
-
-	if epub.Type == booksing.FileStorage {
-		app.logger.WithField("book", book.Hash).Debug("converting to mobi")
-		mobiPath := strings.Replace(epub.File.Path, ".epub", ".mobi", 1)
-		cmd := exec.Command("ebook-convert", epub.File.Path, mobiPath)
-
-		_, err = cmd.CombinedOutput()
-		if err != nil {
-			app.logger.WithField("err", err).Error("Command finished with error")
-			c.JSON(500, gin.H{
-				"text": err.Error(),
-			})
-			return
-		}
-
-		mobiLoc := epub
-		mobiLoc.File.Path = mobiPath
-
-		app.db.AddLocation(hash, "mobi", mobiLoc)
-		app.logger.WithField("book", book.Hash).Debug("conversion successful")
-		c.JSON(200, book)
-		return
-	}
-	if epub.Type == booksing.S3Storage {
-		mobi := epub
-		dl, err := epub.S3.GetDLLink()
-		if err != nil {
-			app.logger.WithField("err", err).Error("could not get dl link")
-			c.JSON(500, gin.H{
-				"text": err.Error(),
-			})
-			return
-		}
-
-		mobi.S3.Key = strings.Replace(epub.S3.Key, ".epub", ".mobi", 1)
-		ul, err := mobi.S3.GetULLink()
-		if err != nil {
-			app.logger.WithField("err", err).Error("could not get dl link")
-			c.JSON(500, gin.H{
-				"text": err.Error(),
-			})
-			return
-		}
-
-		r := booksing.ConvertRequest{
-			GetURL:       dl,
-			PutURL:       ul,
-			Filename:     hash + ".epub",
-			Loc:          mobi,
-			Hash:         hash,
-			TargetFormat: "mobi",
-		}
-
-		err = app.publishConvertJob(r)
-		if err != nil {
-			app.logger.WithField("err", err).Error("Failed to publish convert job")
-			c.JSON(500, gin.H{
-				"text": err.Error(),
-			})
-			return
-		}
-
-		for i := 0; i < 9; i++ {
-			time.Sleep(3 * time.Second)
-			b, err := app.db.GetBook(hash)
-			if err != nil {
-				continue
-			}
-			if b.HasMobi() {
-				c.JSON(200, b)
-				return
-			}
-		}
-		c.JSON(200, book)
-		return
-
-	}
-}
-
 func (app *booksingApp) getBooks(c *gin.Context) {
 
 	var resp bookResponse
@@ -423,13 +307,6 @@ func (app *booksingApp) refresh() {
 	}
 	results.Old = total
 	results.StopTime = time.Now()
-	err = app.db.AddRefresh(results)
-	if err != nil {
-		app.logger.WithFields(logrus.Fields{
-			"err":     err,
-			"results": results,
-		}).Error("Could not save refresh results")
-	}
 
 	app.logger.WithField("result", results).Info("finished refresh of booklist")
 }
@@ -500,45 +377,6 @@ func (app *booksingApp) addBook(c *gin.Context) {
 		return
 	}
 	c.JSON(200, book)
-
-}
-
-func (app *booksingApp) addLocation(c *gin.Context) {
-	hash := c.Param("hash")
-	fileType := c.Param("type")
-	var b booksing.Location
-
-	if err := c.ShouldBindJSON(&b); err != nil {
-		c.JSON(400, gin.H{
-			"text": "invalid input",
-		})
-		return
-	}
-
-	if b.Type == booksing.FileStorage && b.File == nil {
-		c.JSON(400, gin.H{
-			"text": "invalid input",
-		})
-		return
-	}
-	if b.Type == booksing.S3Storage && b.S3 == nil {
-		c.JSON(400, gin.H{
-			"text": "invalid input",
-		})
-		return
-	}
-
-	err := app.db.AddLocation(hash, fileType, b)
-
-	if err != nil {
-		c.JSON(500, gin.H{
-			"text": err,
-		})
-		return
-	}
-	c.JSON(200, gin.H{
-		"text": "ok",
-	})
 
 }
 

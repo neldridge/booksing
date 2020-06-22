@@ -59,41 +59,6 @@ func Logger(log *logrus.Entry) gin.HandlerFunc {
 	}
 }
 
-func (app *booksingApp) APIKeyMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		apikey := c.GetHeader("x-api-key")
-		if apikey == "" {
-			c.JSON(403, gin.H{
-				"msg": "access denied",
-			})
-			c.Abort()
-			return
-		}
-		key, err := app.db.GetAPIKey(apikey)
-		if err == booksing.ErrNotFound {
-			c.JSON(403, gin.H{
-				"msg": "access denied",
-			})
-			c.Abort()
-			return
-		} else if err != nil {
-			c.JSON(500, gin.H{
-				"msg": err.Error(),
-			})
-			c.Abort()
-			return
-		}
-		key.LastUsed = time.Now().In(app.timezone)
-		app.db.SaveAPIKey(key)
-
-		c.Set("apikey", key.ID)
-		c.Set("id", &booksing.User{
-			Username: key.Username,
-		})
-
-	}
-}
-
 func (app *booksingApp) BearerTokenMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 

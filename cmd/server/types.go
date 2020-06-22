@@ -46,24 +46,16 @@ type database interface {
 	GetBook(string) (*booksing.Book, error)
 	DeleteBook(string) error
 	GetBooks(string, int) ([]booksing.Book, error)
-	AddLocation(string, string, booksing.Location) error
 
 	GetBookBy(string, string) (*booksing.Book, error)
 
 	AddDownload(booksing.Download) error
 	GetDownloads(int) ([]booksing.Download, error)
 
-	SaveAPIKey(*booksing.Apikey) error
-	GetAPIKey(string) (*booksing.Apikey, error)
-	GetAPIKeysForUser(string) ([]booksing.Apikey, error)
-	DeleteAPIKey(string) error
-
 	SaveUser(*booksing.User) error
 	GetUser(string) (booksing.User, error)
 
 	GetUsers() ([]booksing.User, error)
 
-	AddRefresh(booksing.RefreshResult) error
-	GetRefreshes(int) ([]booksing.RefreshResult, error)
 	Close()
 }
