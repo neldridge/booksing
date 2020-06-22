@@ -1,4 +1,4 @@
-package main
+package booksing
 
 import (
 	"regexp"
@@ -28,7 +28,7 @@ var uselessWords = []string{
 	"the", "and", "a", "an",
 }
 
-func hashBook(author, title string) string {
+func HashBook(author, title string) string {
 	author = strings.ToLower(author)
 	author = strings.Replace(author, "-", " ", -1)
 	title = strings.ToLower(title)
@@ -90,17 +90,20 @@ func generalizer(s string) string {
 	for _, w := range uselessWords {
 		s = strings.Replace(s, " "+w+" ", " ", -1)
 	}
-	keys := getMetaphoneKeys(s)
+	keys := GetMetaphoneKeys(s)
 	s = strings.Join(keys, "")
 
 	return s
 }
 
-func getLowercasedSlice(s string) []string {
+func GetLowercasedSlice(s string) []string {
 	var returnParts []string
 	parts := strings.Split(s, " ")
 	for _, part := range parts {
 		cleaned := alphaNumeric.ReplaceAllString(strings.ToLower(part), "")
+		if cleaned == "" {
+			continue
+		}
 		returnParts = append(returnParts, cleaned)
 	}
 
@@ -110,7 +113,7 @@ func getLowercasedSlice(s string) []string {
 	return returnParts
 }
 
-func getMetaphoneKeys(s string) []string {
+func GetMetaphoneKeys(s string) []string {
 	parts := metaphonify(s)
 
 	parts = unique(parts)

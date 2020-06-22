@@ -1,28 +1,66 @@
 <template>
   <div id="app" class="container">
     <nav class="level">
-      <b-field>
-        <b-input
-          placeholder="Search..."
-          type="search"
-          v-model="searchstring"
-          id="search"
-          size="is-medium"
-          icon="magnify"
-        ></b-input>
-      </b-field>
-      <button
-        class="button field is-danger"
-        @click="deleteSelectedBooks"
-        v-if="isAdmin && checkedRows.length > 0"
-      >
-        <b-icon icon="delete"></b-icon>
-        <span>Delete selected ({{ checkedRows.length }})</span>
-      </button>
-      <router-link v-if="isAdmin" :to="{ name: 'admin' }" class="button field is-info">admin</router-link>
+      <div class="level-item">
+        <p class="subtitle is-5">
+          <a v-if="!statsLoading" @click="refreshCount">
+            <b-tooltip
+              label="total books available for searching"
+              type="is-light"
+              :delay="500"
+              dashed
+            >
+              <strong>{{ total }}</strong>&nbsp; books
+            </b-tooltip>
+          </a>
+          <strong v-if="statsLoading">Loading..</strong>
+        </p>
+      </div>
+      <div class="level-item">
+        <b-field>
+          <b-input
+            placeholder="Search..."
+            type="search"
+            v-model="searchstring"
+            expanded
+            id="search"
+            size="is-medium"
+            icon="magnify"
+          ></b-input>
+          <p class="control">
+            <button @click="getBooks" class="button is-medium is-primary">Search</button>
+          </p>
+        </b-field>
+      </div>
+      <div v-if="searched" class="level-item">
+        <p class="subtitle is-5">
+          <strong>{{ resultCount }}</strong> search results
+        </p>
+      </div>
+      <div class="level-item">
+        <button
+          class="button field is-medium is-danger"
+          @click="deleteSelectedBooks"
+          v-if="isAdmin && checkedRows.length > 0"
+        >
+          <b-icon icon="delete"></b-icon>
+          <span>Delete selected ({{ checkedRows.length }})</span>
+        </button>
+      </div>
+      <div class="level-item">
+        <router-link
+          v-if="isAdmin"
+          :to="{ name: 'admin' }"
+          class="button field is-medium is-info"
+        >admin</router-link>
+      </div>
+      <div class="level-item">
+        <authbutton @user-logged-in="loadAll" />
+      </div>
     </nav>
+    <div v-if="!loggedIn" class="section">Please log in</div>
 
-    <div class="section">
+    <div v-else class="section">
       <b-table
         :data="books"
         paginated
@@ -33,26 +71,62 @@
         :checked-rows.sync="checkedRows"
         :checkable="isAdmin"
         :loading="isLoading"
-        per-page="50"
+        per-page="25"
       >
         <template slot-scope="props">
           <b-table-column field="author" label="author">{{ props.row.author }}</b-table-column>
-          <b-table-column field="title" label="title">{{ props.row.title }}</b-table-column>
+          <b-table-column field="title" label="title">
+            <span v-if="longTitle(props.row.title)">
+              <b-tooltip
+                :label="props.row.title"
+                type="is-light"
+                :delay="500"
+                dashed
+              >{{ limitTitleLength(props.row.title) }}</b-tooltip>
+            </span>
+            <span v-else>{{ props.row.title }}</span>
+          </b-table-column>
           <b-table-column field="language" label="language">{{ props.row.language }}</b-table-column>
           <b-table-column field="added" label="added">{{ formatDate(props.row.date_added) }}</b-table-column>
-          <b-table-column field="dl" label="epub">
-            <a :href="'/api/download/?book=' + props.row.filename">download</a>
-          </b-table-column>
-          <b-table-column field="convert" label="mobi" :visible="isAdmin">
-            <a
-              v-if="props.row.hasmobi"
-              :href="'/api/download/?book=' + props.row.filename.replace('.epub', '.mobi')"
-            >.mobi</a>
-            <a v-else @click="convertBook(props.row.hash)">convert</a>
-          </b-table-column>
         </template>
         <template slot="detail" slot-scope="props">
-          <span v-html="formatFullMessage(props.row.description)" />
+          <article class="media">
+            <figure class="media-left">
+              <p class="image is-64x64"></p>
+            </figure>
+            <div class="media-content">
+              <div class="content">
+                <p>
+                  <strong>{{ props.row.author }}</strong>
+                  <small>&nbsp;{{ props.row.title }}</small>
+                  <br />
+                  <span v-html="formatFullMessage(props.row.description)" />
+                </p>
+              </div>
+              <nav class="level is-mobile">
+                <div class="level-left">
+                  <span class="level-item">Download:</span>
+                  <template v-for="(v, index) in props.row.locations">
+                    <a
+                      :key="index"
+                      class="level-item"
+                      :href="'/auth/download?hash=' + props.row.hash + '&index=' + index"
+                    >
+                      <span>.{{ index}}</span>
+                    </a>
+                  </template>
+                  <a
+                    v-if="!hasMobi(props.row)"
+                    class="level-item"
+                    @click="convertBook(props.row.hash)"
+                  >
+                    <b-icon icon="shape-polygon-plus"></b-icon>
+                    <span>create .mobi</span>
+                  </a>
+                </div>
+              </nav>
+            </div>
+          </article>
           <br />
         </template>
 
@@ -74,17 +148,26 @@
 <script>
 import axios from "axios";
 import lodash from "lodash";
+import router from "../router";
+import AuthButton from "./AuthButton";
 
 export default {
   name: "home",
+  components: {
+    authbutton: AuthButton
+  },
   data: function() {
     return {
       searchstring: "",
       books: [],
       total: 0,
       checkedRows: [],
+      resultCount: 0,
       isLoading: true,
+      statsLoading: true,
+      loggedIn: false,
       isAdmin: false,
+      searched: false,
       refreshButtonText: "refresh"
     };
   },
@@ -95,29 +178,53 @@ export default {
       this.getBooks();
     }
   },
-  mounted: function() {
-    this.getUser();
-    this.getBooks();
-  },
-
   methods: {
+    loadAll: function(loggedIn) {
+      this.loggedIn = loggedIn;
+      if (loggedIn) {
+        this.refreshCount();
+        this.getBooks();
+        this.getUser();
+      }
+    },
     formatFullMessage(description) {
+      if (description == "") {
+        return "No description.";
+      }
       return (
         "<span>" +
         description.replace(/([^>\r\n]?)(\r\n|\n\r|\r|\n)/g, "$1<br>$2") +
         "</span>"
       );
     },
+    hasMobi(book) {
+      return "mobi" in book.locations;
+    },
+    longTitle(title) {
+      return title.length > 53;
+    },
+    limitTitleLength(title) {
+      if (title.length > 53) {
+        return title.substring(0, 50) + "...";
+      }
+      return title;
+    },
     formatDate(dateStr) {
       var d = new Date(dateStr);
-      return d.toLocaleDateString("nl-NL", {
-        year: "numeric",
-        month: "long",
-        day: "numeric"
-      });
+      var input = new Date(dateStr);
+      var today = new Date();
+      if (d.setHours(0, 0, 0, 0) == today.setHours(0, 0, 0, 0)) {
+        return input.toLocaleTimeString("nl-NL", {});
+      } else {
+        return input.toLocaleDateString("nl-NL", {
+          year: "numeric",
+          month: "long",
+          day: "numeric"
+        });
+      }
     },
     showDetailed(book) {
-      return book.description != "";
+      return true;
     },
     convertBook: function(hash) {
       console.log(hash);
@@ -126,7 +233,7 @@ export default {
       const params = new URLSearchParams();
       params.append("hash", hash);
       axios
-        .post("/api/convert/", params)
+        .post("/auth/convert", params)
         .then(function(response) {
           vm.getBooks();
           console.log(response);
@@ -135,19 +242,27 @@ export default {
           console.log(error);
         });
     },
+    refreshCount: function() {
+      var vm = this;
+      vm.statsLoading = true;
+      axios
+        .get("/auth/stats")
+        .then(function(response) {
+          vm.total = response.data.total;
+          vm.statsLoading = false;
+        })
+        .catch(function(error) {});
+    },
     getBooks: lodash.debounce(
       function() {
         var vm = this;
         vm.statusMessage = "getting results";
-        var uri = "/api/search";
-        if (this.searchstring == "/dups") {
-          uri = "/api/duplicates.json";
-        }
+        var uri = "/auth/search";
         axios
           .get(uri, {
             params: {
               filter: this.searchstring,
-              results: 500
+              results: 100
             }
           })
           .then(function(response) {
@@ -155,13 +270,17 @@ export default {
             if (vm.books === null) {
               vm.books = [];
             }
-            vm.total = response.data.total;
-            document.title = `booksing - ${vm.total} books available for searching`;
+            vm.searched = vm.searchstring != "";
+            document.title = `booksing`;
             vm.isLoading = false;
             vm.checkedRows = [];
+            vm.resultCount = vm.books.length;
           })
           .catch(function(error) {
             vm.statusMessage = "Something went wrong";
+            if (error.response && error.response.status == 430) {
+              vm.showErrorAlert("Please contact the site owner to gain access");
+            }
             console.log(error);
           });
       },
@@ -169,6 +288,13 @@ export default {
       // user to stop typing.
       500
     ),
+    showErrorAlert: function(msg) {
+      this.$toast.open({
+        duration: 50000,
+        message: msg,
+        type: "is-danger"
+      });
+    },
     deleteSelectedBooks: function() {
       var vm = this;
       vm.isLoading = true;
@@ -176,7 +302,7 @@ export default {
         const params = new URLSearchParams();
         params.append("hash", book.hash);
         axios
-          .post("/api/delete/", params)
+          .post("/admin/delete", params)
           .then(function(response) {
             vm.getBooks();
           })
@@ -189,7 +315,7 @@ export default {
       var vm = this;
       vm.refreshButtonText = "Refreshing...";
       axios
-        .get("/api/refresh")
+        .get("/admin/refresh")
         .then(function(response) {
           vm.refreshButtonText = "refresh";
           vm.getBooks();
@@ -202,7 +328,7 @@ export default {
     getUser: function() {
       var vm = this;
       axios
-        .get("/api/user.json")
+        .get("/auth/user.json")
         .then(function(response) {
           vm.isAdmin = response.data.admin;
         })
