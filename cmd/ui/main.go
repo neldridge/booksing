@@ -22,25 +22,27 @@ import (
 
 // V is the holder struct for all possible template values
 type V struct {
-	Results int
-	Error   error
-	Books   []booksing.Book
+	Results   int
+	Error     error
+	Books     []booksing.Book
+	Q         string
+	TimeTaken int
 }
 
 type configuration struct {
-	AllowDelete   bool
-	AllowOrganize bool
-	AdminUser     string `default:""`
-	BookDir       string `default:"."`
-	ImportDir     string `default:"./import"`
-	Database      string `default:"file://booksing.db"`
-	Project       string
-	LogLevel      string `default:"info"`
-	BindAddress   string `default:"localhost:7132"`
-	Version       string `default:"unknown"`
-	Timezone      string `default:"Europe/Amsterdam"`
-	Mode          string `default:"dev"`
-	FQDN          string `default:"localhost:8080"`
+	AdminUser string `default:""`
+	BookDir   string `default:"."`
+	ImportDir string `default:"./import"`
+	Database  string `default:"file://booksing.db"`
+	Meili     struct {
+		Host  string
+		Index string
+		Key   string
+	}
+	Project     string
+	LogLevel    string `default:"info"`
+	BindAddress string `default:"localhost:7132"`
+	Timezone    string `default:"Europe/Amsterdam"`
 }
 
 func main() {
@@ -76,7 +78,10 @@ func main() {
 	}
 
 	var s search
-	s = meili.New()
+	s, err = meili.New(cfg.Meili.Host, cfg.Meili.Index, cfg.Meili.Key)
+	if err != nil {
+		log.WithField("err", err).Fatal("unable to start meili client")
+	}
 
 	tpl := template.New("")
 	tpl.Funcs(template.FuncMap{
@@ -157,17 +162,14 @@ func main() {
 	}
 
 	app := booksingApp{
-		db:            db,
-		s:             s,
-		allowDeletes:  cfg.AllowDelete,
-		allowOrganize: cfg.AllowOrganize,
-		bookDir:       cfg.BookDir,
-		importDir:     cfg.ImportDir,
-		timezone:      tz,
-		adminUser:     cfg.AdminUser,
-		FQDN:          cfg.FQDN,
-		logger:        log.WithField("release", cfg.Version),
-		cfg:           cfg,
+		db:        db,
+		s:         s,
+		bookDir:   cfg.BookDir,
+		importDir: cfg.ImportDir,
+		timezone:  tz,
+		adminUser: cfg.AdminUser,
+		logger:    log.WithField("app", "booksing"),
+		cfg:       cfg,
 	}
 
 	if cfg.ImportDir != "" {
@@ -178,23 +180,19 @@ func main() {
 	r.Use(Logger(app.logger), gin.Recovery())
 	r.SetHTMLTemplate(tpl)
 	r.GET("/", app.search)
+	r.GET("download", app.downloadBook)
 
 	auth := r.Group("/auth")
 	auth.Use(gin.Recovery(), app.BearerTokenMiddleware())
 	{
 		auth.GET("search", app.getBooks)
-		auth.GET("user.json", app.getUser)
 		auth.GET("stats", app.getStats)
-
-		auth.GET("download", app.downloadBook)
 
 	}
 
 	admin := r.Group("/admin")
 	admin.Use(gin.Recovery(), app.BearerTokenMiddleware(), app.mustBeAdmin())
 	{
-		admin.GET("downloads.json", app.getDownloads)
-		admin.GET("users", app.getUsers)
 		admin.POST("user/:username", app.updateUser)
 		admin.POST("refresh", app.refreshBooks)
 		admin.POST("delete", app.deleteBook)

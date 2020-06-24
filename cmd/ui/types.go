@@ -9,18 +9,16 @@ import (
 )
 
 type booksingApp struct {
-	s             search
-	db            database
-	allowDeletes  bool
-	allowOrganize bool
-	bookDir       string
-	importDir     string
-	logger        *logrus.Entry
-	timezone      *time.Location
-	FQDN          string
-	adminUser     string
-	cfg           configuration
-	templates     *template.Template
+	s         search
+	db        database
+	bookDir   string
+	importDir string
+	logger    *logrus.Entry
+	timezone  *time.Location
+	FQDN      string
+	adminUser string
+	cfg       configuration
+	templates *template.Template
 }
 
 type bookResponse struct {
@@ -57,7 +55,7 @@ type search interface {
 	BookCount() int
 	GetBook(string) (*booksing.Book, error)
 	DeleteBook(string) error
-	GetBooks(string, int) ([]booksing.Book, error)
+	GetBooks(string, int64, int64) ([]booksing.Book, error)
 
-	GetBookBy(string, string) (*booksing.Book, error)
+	GetBookByHash(string) (*booksing.Book, error)
 }

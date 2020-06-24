@@ -2,26 +2,29 @@
 {{template "base.html"}}
 
 <body>
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th scope="col">id</th>
-                <th scope="col">author</th>
-                <th scope="col">title</th>
-                <th scope="col">added</th>
-            </tr>
-        </thead>
-        <tbody>
-            {{range .Books}}
-            <tr>
-                <th scope="row">{{.ID}}</th>
-                <td>{{.Author}}</td>
-                <td>{{.Title}}</td>
-                <td>{{.Added | relativeTime}}</td>
-            </tr>
-            {{end}}
-        </tbody>
-    </table>
+    {{template "nav.html" .}}
+    <div class="container">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th scope="col">author</th>
+                    <th scope="col">title</th>
+                    <th scope="col">added</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Books}}
+                <tr>
+                    <td>{{.Author}}</td>
+                    <td>{{.Title}}</td>
+                    <td>{{.Added | relativeTime}}</td>
+                    <td><a href="/download?hash={{.Hash}}">download</a></td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
 </body>
 
 

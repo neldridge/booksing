@@ -26,7 +26,6 @@ const (
 
 // Book represents a book record in the database, regular "book" data with extra metadata
 type Book struct {
-	ID          int
 	Hash        string
 	Title       string
 	Author      string
@@ -63,7 +62,7 @@ type FileLocation struct {
 }
 
 // NewBookFromFile creates a book object from a file
-func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, err error) {
+func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
 	epub, err := epub.ParseFile(bookpath)
 	if err != nil {
 		return nil, err
@@ -97,16 +96,12 @@ func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, er
 
 	book.Hash = HashBook(book.Author, book.Title)
 
-	if rename {
-		newBookPath := path.Join(baseDir, GetBookPath(book.Author, book.Title)+".epub")
-		if bookpath != newBookPath {
-			baseDir := filepath.Dir(newBookPath)
-			err := os.MkdirAll(baseDir, 0755)
-			if err == nil {
-				os.Rename(bookpath, newBookPath)
-				fp = newBookPath
-			}
-		}
+	newBookPath := path.Join(baseDir, GetBookPath(book.Author, book.Title)+".epub")
+	baseDir = filepath.Dir(newBookPath)
+	err = os.MkdirAll(baseDir, 0755)
+	if err == nil {
+		os.Rename(bookpath, newBookPath)
+		fp = newBookPath
 	}
 	book.Path = fp
 

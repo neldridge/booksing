@@ -1,0 +1,17 @@
+{{define "nav.html"}}
+<nav class="navbar navbar-light bg-light">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">Booksing</a>
+        {{if gt .TimeTaken  0}}
+        <span class="navbar-text">
+            Loaded results in: {{.TimeTaken}}ms
+        </span>
+        {{end}}
+        <form class="d-flex" action="/" method="GET">
+            <input class="form-control mr-2" name="q" type="search" placeholder="Search" aria-label="Search"
+                value={{.Q}}>
+            <button class="btn btn-outline-success" type="submit">Search</button>
+        </form>
+    </div>
+</nav>
+{{end}}

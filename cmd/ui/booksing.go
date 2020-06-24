@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -37,7 +36,7 @@ func (app *booksingApp) downloadBook(c *gin.Context) {
 
 	hash := c.Query("hash")
 
-	book, err := app.s.GetBookBy("Hash", hash)
+	book, err := app.s.GetBookByHash(hash)
 	if err != nil {
 		app.logger.WithFields(logrus.Fields{
 			"err":  err,
@@ -45,8 +44,11 @@ func (app *booksingApp) downloadBook(c *gin.Context) {
 		}).Error("could not find book")
 		return
 	}
+	/* TODO: actually load user
 	user := c.MustGet("id")
 	username := user.(*booksing.User).Username
+	*/
+	username := "erwin@gnur.nl"
 
 	ip := c.ClientIP()
 	dl := booksing.Download{
@@ -64,36 +66,7 @@ func (app *booksingApp) downloadBook(c *gin.Context) {
 	c.Header("Content-Disposition",
 		fmt.Sprintf("attachment; filename=\"%s\"", fName))
 	c.File(book.Path)
-	return
-}
-
-func (app *booksingApp) bookPresent(c *gin.Context) {
-	author, _ := url.QueryUnescape(c.Param("author"))
-	title, _ := url.QueryUnescape(c.Param("title"))
-
-	author = booksing.Fix(author, true, true)
-	title = booksing.Fix(title, true, false)
-
-	hash := booksing.HashBook(author, title)
-	app.logger.WithFields(logrus.Fields{
-		"author": author,
-		"title":  title,
-		"hash":   hash,
-	}).Info("checking if book exists")
-
-	_, err := app.s.GetBookBy("Hash", hash)
-	found := err == nil
-
-	c.JSON(200, map[string]bool{"found": found})
-}
-
-func (app *booksingApp) getBook(c *gin.Context) {
-	hash := c.Param("hash")
-	book, err := app.s.GetBookBy("Hash", hash)
-	if err != nil {
-		return
-	}
-	c.JSON(200, book)
+	app.logger.WithField("path", book.Path).Info("Starting download")
 }
 
 func (app *booksingApp) getStats(c *gin.Context) {
@@ -103,29 +76,6 @@ func (app *booksingApp) getStats(c *gin.Context) {
 	})
 }
 
-func (app *booksingApp) getUser(c *gin.Context) {
-	id := c.MustGet("id")
-	user := id.(*booksing.User)
-	c.JSON(200, gin.H{
-		"admin": user.IsAdmin,
-	})
-}
-
-func (app *booksingApp) getDownloads(c *gin.Context) {
-	downloads, _ := app.db.GetDownloads(200)
-	c.JSON(200, downloads)
-}
-
-func (app *booksingApp) getUsers(c *gin.Context) {
-	users, err := app.db.GetUsers()
-	if err != nil {
-		c.JSON(500, gin.H{
-			"text": "oopsie",
-		})
-		c.Abort()
-	}
-	c.JSON(200, users)
-}
 func (app *booksingApp) updateUser(c *gin.Context) {
 	id := c.Param("username")
 	dbUser, err := app.db.GetUser(id)
@@ -161,10 +111,10 @@ func (app *booksingApp) updateUser(c *gin.Context) {
 func (app *booksingApp) getBooks(c *gin.Context) {
 
 	var resp bookResponse
-	var limit int
 	numString := c.DefaultQuery("results", "100")
 	filter := strings.ToLower(c.Query("filter"))
 	filter = strings.TrimSpace(filter)
+	var limit int64
 	limit = 1000
 
 	app.logger.WithFields(logrus.Fields{
@@ -172,14 +122,14 @@ func (app *booksingApp) getBooks(c *gin.Context) {
 		"filter": filter,
 	}).Info("user initiated search")
 
-	if a, err := strconv.Atoi(numString); err == nil {
+	if a, err := strconv.ParseInt(numString, 10, 64); err == nil {
 		if a > 0 && a < 1000 {
 			limit = a
 		}
 	}
 	resp.TotalCount = app.s.BookCount()
 
-	books, err := app.s.GetBooks(filter, limit)
+	books, err := app.s.GetBooks(filter, 0, limit)
 	if err != nil {
 		app.logger.WithField("err", err).Error("error retrieving books")
 	}
@@ -266,15 +216,13 @@ func (app *booksingApp) refreshBooks(c *gin.Context) {
 
 func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) {
 	for filename := range bookQ {
-		book, err := booksing.NewBookFromFile(filename, app.allowOrganize, app.bookDir)
+		book, err := booksing.NewBookFromFile(filename, app.bookDir)
 		if err != nil {
-			if app.allowDeletes {
-				app.logger.WithFields(logrus.Fields{
-					"file":   filename,
-					"reason": "invalid",
-				}).Info("Deleting book")
-				os.Remove(filename)
-			}
+			app.logger.WithFields(logrus.Fields{
+				"file":   filename,
+				"reason": "invalid",
+			}).Info("Deleting book")
+			os.Remove(filename)
 			resultQ <- InvalidBook
 			continue
 		}
@@ -286,75 +234,17 @@ func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) 
 			}).Error("could not store book")
 
 			if err == booksing.ErrDuplicate {
-				if app.allowDeletes {
-					app.logger.WithFields(logrus.Fields{
-						"file":   filename,
-						"reason": "duplicate",
-					}).Info("Deleting book")
-					os.Remove(filename)
-				}
+				app.logger.WithFields(logrus.Fields{
+					"file":   filename,
+					"reason": "duplicate",
+				}).Info("Deleting book")
+				os.Remove(filename)
 				resultQ <- DuplicateBook
 			}
 		} else {
 			resultQ <- AddedBook
 		}
 	}
-}
-
-func (app *booksingApp) addBook(c *gin.Context) {
-	var b booksing.BookInput
-	if err := c.ShouldBindJSON(&b); err != nil {
-		c.JSON(400, gin.H{
-			"text": "invalid input",
-		})
-		return
-	}
-
-	book := b.ToBook()
-
-	book.Added = time.Now().In(app.timezone)
-
-	err := app.s.AddBook(&book)
-	if err != nil {
-		c.JSON(500, gin.H{
-			"text": err,
-		})
-		return
-	}
-	c.JSON(200, book)
-
-}
-
-func (app *booksingApp) addBooks(c *gin.Context) {
-	var inBooks []booksing.BookInput
-	if err := c.ShouldBindJSON(&inBooks); err != nil {
-		c.JSON(400, gin.H{
-			"text": "invalid input",
-		})
-		return
-	}
-
-	var books []booksing.Book
-
-	var bo booksing.Book
-
-	for _, b := range inBooks {
-		bo = b.ToBook()
-		bo.Added = time.Now().In(app.timezone)
-		books = append(books, bo)
-	}
-
-	err := app.s.AddBooks(books)
-	if err != nil {
-		c.JSON(500, gin.H{
-			"text": err,
-		})
-		return
-	}
-	c.JSON(200, gin.H{
-		"ok": "yes",
-	})
-
 }
 
 type deleteRequest struct {
@@ -372,7 +262,7 @@ func (app *booksingApp) deleteBook(c *gin.Context) {
 	app.logger.WithField("req", req).Info("got delete request")
 	hash := req.Hash
 
-	book, err := app.s.GetBookBy("Hash", hash)
+	book, err := app.s.GetBookByHash(hash)
 	if err != nil {
 		return
 	}

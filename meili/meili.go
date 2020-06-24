@@ -2,20 +2,47 @@ package meili
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gnur/booksing"
+	"github.com/meilisearch/meilisearch-go"
 )
 
 type Meili struct {
+	client *meilisearch.Client
+	index  string
 }
 
-func New() *Meili {
-	return &Meili{}
+func New(host, index, key string) (*Meili, error) {
+	client := meilisearch.NewClient(meilisearch.Config{
+		Host:   host,
+		APIKey: key,
+	})
+	// Create an index if your index does not already exist
+	_, err := client.Indexes().Create(meilisearch.CreateIndexRequest{
+		UID:        index,
+		PrimaryKey: "Hash",
+	})
+	if err != nil && !strings.Contains(err.Error(), "already exists") {
+		return nil, fmt.Errorf("Unable to create index: %w", err)
+	}
+	return &Meili{
+		client: client,
+		index:  index,
+	}, nil
 }
 
 func (s *Meili) AddBook(b *booksing.Book) error {
-	fmt.Println("Adding ", b.Title)
+	_, err := s.GetBookByHash(b.Hash)
+	if err == nil {
+		return booksing.ErrDuplicate
+	}
+
+	_, err = s.client.Documents(s.index).AddOrUpdate([]booksing.Book{*b})
+	if err != nil {
+		return fmt.Errorf("Unable to insert book: %w", err)
+	}
 	return nil
 }
 
@@ -29,7 +56,6 @@ func (s *Meili) BookCount() int {
 
 func (s *Meili) GetBook(q string) (*booksing.Book, error) {
 	return &booksing.Book{
-		ID:          1,
 		Author:      "auteur 1",
 		Title:       "titel 1",
 		Added:       time.Now(),
@@ -41,25 +67,49 @@ func (s *Meili) DeleteBook(hash string) error {
 	return nil
 }
 
-func (s *Meili) GetBooks(string, int) ([]booksing.Book, error) {
-	return []booksing.Book{
-		{
-			ID:          1,
-			Author:      "auteur 1",
-			Title:       "titel 1",
-			Added:       time.Now(),
-			Description: "",
-		},
-		{
-			ID:          2,
-			Author:      "auteur 2",
-			Title:       "titel 2",
-			Added:       time.Now().Add(-5 * time.Second),
-			Description: "",
-		},
-	}, nil
+func (s *Meili) GetBooks(q string, limit, offset int64) ([]booksing.Book, error) {
+
+	var books []booksing.Book
+	if q == "" {
+		var res []booksing.Book
+		err := s.client.Documents(s.index).List(meilisearch.ListDocumentsRequest{
+			Limit:                limit,
+			Offset:               offset,
+			AttributesToRetrieve: []string{"Hash", "Title", "Author", "Added", "Description"},
+		}, &res)
+		return res, err
+	}
+
+	res, err := s.client.Search(s.index).Search(meilisearch.SearchRequest{
+		Query:  q,
+		Limit:  limit,
+		Offset: offset,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get results from meili: %w", err)
+	}
+
+	for _, hit := range res.Hits {
+		m, ok := hit.(map[string]interface{})
+		if !ok {
+			fmt.Println("CASTING FAILED")
+			continue
+		}
+		var b booksing.Book
+		b.Title = m["Title"].(string)
+		b.Author = m["Author"].(string)
+		b.Description = m["Description"].(string)
+		b.Hash = m["Hash"].(string)
+		b.Added, _ = time.Parse(time.RFC3339, m["Added"].(string))
+
+		books = append(books, b)
+	}
+
+	return books, nil
 }
 
-func (s *Meili) GetBookBy(string, string) (*booksing.Book, error) {
-	return nil, nil
+func (s *Meili) GetBookByHash(hash string) (*booksing.Book, error) {
+	var b booksing.Book
+	err := s.client.Documents(s.index).Get(hash, &b)
+	return &b, err
 }
