@@ -1,0 +1,29 @@
+{{define "search.html"}}
+{{template "base.html"}}
+
+<body>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th scope="col">id</th>
+                <th scope="col">author</th>
+                <th scope="col">title</th>
+                <th scope="col">added</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Books}}
+            <tr>
+                <th scope="row">{{.ID}}</th>
+                <td>{{.Author}}</td>
+                <td>{{.Title}}</td>
+                <td>{{.Added | relativeTime}}</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</body>
+
+
+{{template "footer.html"}}
+{{end}}

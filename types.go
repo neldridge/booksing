@@ -40,12 +40,3 @@ type AddBookInput struct {
 	Language    string `json:"language"`
 	Description string `json:"description"`
 }
-
-type ConvertRequest struct {
-	GetURL       string
-	Filename     string
-	PutURL       string
-	TargetFormat string
-	Hash         string
-	Loc          Location
-}

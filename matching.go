@@ -2,11 +2,9 @@ package booksing
 
 import (
 	"regexp"
-	"sort"
 	"strings"
 	"unicode"
 
-	"github.com/antzucaro/matchr"
 	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
@@ -66,12 +64,6 @@ func HashBook(author, title string) string {
 	//remove all non [a-z0-9]
 	title = alphaNumeric.ReplaceAllString(title, "")
 
-	/*
-		id := sha1.New()
-		io.WriteString(id, author)
-		io.WriteString(id, title)
-		return hex.EncodeToString(id.Sum(nil))
-	*/
 	return title
 }
 
@@ -82,59 +74,6 @@ func removeAccents(in string) string {
 		return in
 	}
 	return s
-}
-
-func generalizer(s string) string {
-	s = " " + s + " "
-	s = onlyLower.ReplaceAllString(strings.ToLower(s), " ")
-	for _, w := range uselessWords {
-		s = strings.Replace(s, " "+w+" ", " ", -1)
-	}
-	keys := GetMetaphoneKeys(s)
-	s = strings.Join(keys, "")
-
-	return s
-}
-
-func GetLowercasedSlice(s string) []string {
-	var returnParts []string
-	parts := strings.Split(s, " ")
-	for _, part := range parts {
-		cleaned := alphaNumeric.ReplaceAllString(strings.ToLower(part), "")
-		if cleaned == "" {
-			continue
-		}
-		returnParts = append(returnParts, cleaned)
-	}
-
-	returnParts = unique(returnParts)
-	sort.Strings(returnParts)
-
-	return returnParts
-}
-
-func GetMetaphoneKeys(s string) []string {
-	parts := metaphonify(s)
-
-	parts = unique(parts)
-
-	sort.Strings(parts)
-
-	return parts
-}
-
-func metaphonify(s string) []string {
-	var nameParts []string
-	names := strings.Split(s, " ")
-	for _, name := range names {
-		cleaned := onlyLower.ReplaceAllString(strings.ToLower(name), "")
-		a, _ := matchr.DoubleMetaphone(cleaned)
-		if len(a) >= 1 {
-			nameParts = append(nameParts, a)
-		}
-	}
-	sort.Strings(nameParts)
-	return nameParts
 }
 
 func unique(input []string) []string {

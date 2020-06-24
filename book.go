@@ -12,7 +12,6 @@ import (
 
 	"github.com/gnur/booksing/epub"
 	"github.com/kennygrant/sanitize"
-	minio "github.com/minio/minio-go"
 )
 
 var yearRemove = regexp.MustCompile(`\((1|2)[0-9]{3}\)`)
@@ -22,22 +21,19 @@ var filenameSafe = regexp.MustCompile("[^a-zA-Z0-9 -]+")
 type StorageLocation string
 
 const (
-	S3Storage   StorageLocation = "S3"
 	FileStorage StorageLocation = "FILE"
 )
 
 // Book represents a book record in the database, regular "book" data with extra metadata
 type Book struct {
-	ID            int                 `json:"stormid" storm:"id,increment"`
-	Hash          string              `json:"hash" storm:"index"`
-	Title         string              `json:"title" storm:"index"`
-	Author        string              `json:"author" storm:"index"`
-	Language      string              `json:"language" storm:"index"`
-	Description   string              `json:"description"`
-	MetaphoneKeys []string            `bson:"metaphone_keys"`
-	SearchWords   []string            `bson:"search_keys"`
-	Added         time.Time           `bson:"date_added" json:"date_added" storm:"index"`
-	Locations     map[string]Location `json:"locations"`
+	ID          int
+	Hash        string
+	Title       string
+	Author      string
+	Language    string
+	Description string
+	Added       time.Time
+	Path        string
 }
 
 type BookInput struct {
@@ -45,7 +41,7 @@ type BookInput struct {
 	Author      string
 	Language    string
 	Description string
-	Locations   map[string]Location
+	Path        string
 }
 
 func (b *BookInput) ToBook() Book {
@@ -54,89 +50,16 @@ func (b *BookInput) ToBook() Book {
 	book.Title = Fix(b.Title, true, false)
 	book.Language = FixLang(b.Language)
 	book.Description = b.Description
-	book.Locations = b.Locations
+	book.Path = b.Path
 
-	searchWords := book.Title + " " + book.Author
-	book.MetaphoneKeys = GetMetaphoneKeys(searchWords)
-	book.SearchWords = GetLowercasedSlice(searchWords)
 	book.Hash = HashBook(book.Author, book.Title)
 
 	return book
 
 }
 
-// Location represents a storage location of a book
-type Location struct {
-	Type StorageLocation
-	S3   *S3Location   `json:",omitempty"`
-	File *FileLocation `json:",omitempty"`
-}
-
-type S3Location struct {
-	Host   string
-	Bucket string
-	Key    string
-}
-
-func (s *S3Location) GetDLLink() (string, error) {
-	accessKeyID := os.Getenv("ACCESS_KEY_ID")
-	secretAccessKey := os.Getenv("SECRET_ACCESS_KEY")
-
-	mc, err := minio.New(s.Host, accessKeyID, secretAccessKey, true)
-
-	if err != nil {
-		return "", err
-	}
-	url, err := mc.PresignedGetObject(s.Bucket, s.Key, 1*time.Hour, nil)
-
-	if err != nil {
-		return "", err
-	}
-	return url.String(), nil
-}
-
-func (s *S3Location) GetULLink() (string, error) {
-	accessKeyID := os.Getenv("ACCESS_KEY_ID")
-	secretAccessKey := os.Getenv("SECRET_ACCESS_KEY")
-
-	mc, err := minio.New(s.Host, accessKeyID, secretAccessKey, true)
-
-	if err != nil {
-		return "", err
-	}
-	url, err := mc.PresignedPutObject(s.Bucket, s.Key, 1*time.Hour)
-
-	if err != nil {
-		return "", err
-	}
-	return url.String(), nil
-}
-
 type FileLocation struct {
 	Path string
-}
-
-func (b *Book) HasSearchWords(terms []string) bool {
-	for _, term := range terms {
-		if !contains(b.SearchWords, term) {
-			return false
-		}
-	}
-	return true
-}
-
-func (b *Book) HasMetaphoneKeys(terms []string) bool {
-	for _, term := range terms {
-		if !contains(b.MetaphoneKeys, term) {
-			return false
-		}
-	}
-	return true
-}
-
-func (b *Book) HasMobi() bool {
-	_, exists := b.Locations["mobi"]
-	return exists
 }
 
 // NewBookFromFile creates a book object from a file
@@ -158,17 +81,6 @@ func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, er
 		return nil, err
 	}
 
-	//	mobiPath := strings.Replace(bookpath, "epub", "mobi", -1)
-	//	_, err = os.Stat(mobiPath)
-	//	if !os.IsNotExist(err) {
-	//		book.Locations["mobi"] = Location{
-	//			Type: FileStorage,
-	//			File: &FileLocation{
-	//				Path: mobiPath,
-	//			},
-	//		}
-	//	}
-
 	fp := bookpath
 
 	fi, err := f.Stat()
@@ -183,10 +95,6 @@ func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, er
 	book.Language = FixLang(book.Language)
 	book.Description = sanitize.HTML(book.Description)
 
-	searchWords := book.Title + " " + book.Author
-	book.MetaphoneKeys = GetMetaphoneKeys(searchWords)
-	book.SearchWords = GetLowercasedSlice(searchWords)
-
 	book.Hash = HashBook(book.Author, book.Title)
 
 	if rename {
@@ -200,13 +108,7 @@ func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, er
 			}
 		}
 	}
-	book.Locations = make(map[string]Location)
-	book.Locations["epub"] = Location{
-		Type: FileStorage,
-		File: &FileLocation{
-			Path: fp,
-		},
-	}
+	book.Path = fp
 
 	return &book, nil
 }

@@ -1,0 +1,18 @@
+{{define "selectworkspace.html"}}
+{{template "base.html"}}
+
+<body>
+    <section class="section">
+        <div class="container">
+            <h1 class="title">Choose your workspace</h1>
+            {{range .Workspaces}}
+            <a href="/clients/{{.}}">{{.}}</a><br>
+            {{end}}
+
+        </div>
+    </section>
+</body>
+
+
+{{template "footer.html"}}
+{{end}}

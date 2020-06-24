@@ -6,7 +6,8 @@ import (
 
 // User demo
 type User struct {
-	Username  string
+	ID        int    `storm:"id,increment"`
+	Username  string `storm:unique,index`
 	IsAdmin   bool
 	IsAllowed bool
 	Created   time.Time
