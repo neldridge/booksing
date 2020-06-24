@@ -36,10 +36,9 @@ type configuration struct {
 	Database  string `default:"file://booksing.db"`
 	Meili     struct {
 		Host  string
-		Index string
-		Key   string
+		Index string `default:"books"`
+		Key   string `required:"true"`
 	}
-	Project     string
 	LogLevel    string `default:"info"`
 	BindAddress string `default:"localhost:7132"`
 	Timezone    string `default:"Europe/Amsterdam"`
