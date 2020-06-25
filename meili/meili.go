@@ -70,26 +70,39 @@ func (s *Meili) DeleteBook(hash string) error {
 func (s *Meili) GetBooks(q string, limit, offset int64) ([]booksing.Book, error) {
 
 	var books []booksing.Book
+	var hits []interface{}
+
 	if q == "" {
-		var res []booksing.Book
-		err := s.client.Documents(s.index).List(meilisearch.ListDocumentsRequest{
-			Limit:                limit,
-			Offset:               offset,
-			AttributesToRetrieve: []string{"Hash", "Title", "Author", "Added", "Description"},
-		}, &res)
-		return res, err
+		for tDiff := 0 * time.Hour; tDiff < 720*time.Hour; tDiff += 24 * time.Hour {
+			q := time.Now().Add(-1 * tDiff).Format("2006-01-02")
+			res, err := s.client.Search(s.index).Search(meilisearch.SearchRequest{
+				Query:  q,
+				Limit:  limit,
+				Offset: offset,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("Unable to get results from meili: %w", err)
+			}
+			fmt.Println(tDiff.String(), q, len(res.Hits))
+			if len(res.Hits) > 0 {
+				hits = res.Hits
+				break
+			}
+		}
+	} else {
+
+		res, err := s.client.Search(s.index).Search(meilisearch.SearchRequest{
+			Query:  q,
+			Limit:  limit,
+			Offset: offset,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("Unable to get results from meili: %w", err)
+		}
+		hits = res.Hits
 	}
 
-	res, err := s.client.Search(s.index).Search(meilisearch.SearchRequest{
-		Query:  q,
-		Limit:  limit,
-		Offset: offset,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("Unable to get results from meili: %w", err)
-	}
-
-	for _, hit := range res.Hits {
+	for _, hit := range hits {
 		m, ok := hit.(map[string]interface{})
 		if !ok {
 			fmt.Println("CASTING FAILED")

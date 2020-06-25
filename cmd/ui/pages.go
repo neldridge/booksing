@@ -49,6 +49,7 @@ func (app *booksingApp) search(c *gin.Context) {
 		Books:     books,
 		Error:     err,
 		Q:         q,
+		IsAdmin:   app.IsUserAdmin(c),
 	})
 
 }

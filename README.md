@@ -1,5 +1,5 @@
 # booksing
-A tool to browse epubs and convert them to mobi ebooks using kindlegen. 
+A tool to browse epubs.
 
 Heavily inspired by https://github.com/geek1011/BookBrowser/
 

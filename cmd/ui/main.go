@@ -27,6 +27,8 @@ type V struct {
 	Books     []booksing.Book
 	Q         string
 	TimeTaken int
+	IsAdmin   bool
+	Username  string
 }
 
 type configuration struct {
@@ -210,4 +212,9 @@ func main() {
 	if err != nil {
 		log.WithField("err", err).Fatal("unable to start running")
 	}
+}
+
+func (app *booksingApp) IsUserAdmin(c *gin.Context) bool {
+
+	return true
 }
