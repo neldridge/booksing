@@ -19,6 +19,7 @@ type booksingApp struct {
 	adminUser string
 	cfg       configuration
 	templates *template.Template
+	state     string
 }
 
 type bookResponse struct {
@@ -45,12 +46,16 @@ type database interface {
 
 	GetUsers() ([]booksing.User, error)
 
+	GetBookCount() int
+	UpdateBookCount(int) error
+	GetBookCountHistory(time.Time, time.Time) ([]booksing.BookCount, error)
+
 	Close()
 }
 
 type search interface {
 	AddBook(*booksing.Book) error
-	AddBooks([]booksing.Book) error
+	AddBooks([]booksing.Book) (*booksing.AddBooksResult, error)
 
 	BookCount() int
 	GetBook(string) (*booksing.Book, error)

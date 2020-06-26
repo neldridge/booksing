@@ -46,8 +46,17 @@ func (s *Meili) AddBook(b *booksing.Book) error {
 	return nil
 }
 
-func (s *Meili) AddBooks(b []booksing.Book) error {
-	return nil
+func (s *Meili) AddBooks(books []booksing.Book) (*booksing.AddBooksResult, error) {
+	var res booksing.AddBooksResult
+	for _, b := range books {
+		err := s.AddBook(&b)
+		if err != nil {
+			res.Errors++
+		} else {
+			res.Added++
+		}
+	}
+	return &res, nil
 }
 
 func (s *Meili) BookCount() int {

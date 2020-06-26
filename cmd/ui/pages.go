@@ -15,7 +15,7 @@ func (app *booksingApp) search(c *gin.Context) {
 	var limit int64
 	var err error
 	offset = 0
-	limit = 100
+	limit = 30
 	q := c.Query("q")
 	off := c.Query("o")
 	if off != "" {
@@ -28,7 +28,7 @@ func (app *booksingApp) search(c *gin.Context) {
 	if lim != "" {
 		limit, err = strconv.ParseInt(lim, 10, 64)
 		if err != nil {
-			limit = 100
+			limit = 30
 		}
 	}
 
@@ -44,12 +44,14 @@ func (app *booksingApp) search(c *gin.Context) {
 	stop := time.Since(start)
 	latency := int(math.Ceil(float64(stop.Nanoseconds()) / 1000000.0))
 	c.HTML(200, "search.html", V{
-		Results:   len(books),
-		TimeTaken: latency,
-		Books:     books,
-		Error:     err,
-		Q:         q,
-		IsAdmin:   app.IsUserAdmin(c),
+		Limit:      limit,
+		Offset:     offset,
+		Results:    len(books),
+		TimeTaken:  latency,
+		Books:      books,
+		Error:      err,
+		Q:          q,
+		IsAdmin:    app.IsUserAdmin(c),
+		TotalBooks: app.db.GetBookCount(),
 	})
-
 }

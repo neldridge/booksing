@@ -17,3 +17,5 @@ env_vars.yaml
 cmd/server/dist
 *.bak
 *creds.json
+
+.env

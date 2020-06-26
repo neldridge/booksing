@@ -4,13 +4,12 @@ import (
 	"time"
 )
 
-// User demo
+// User
 type User struct {
 	ID        int    `storm:"id,increment"`
-	Username  string `storm:unique,index`
+	Name      string `storm:"unique,index"`
 	IsAdmin   bool
 	IsAllowed bool
 	Created   time.Time
 	LastSeen  time.Time
-	APIKeys   []Apikey
 }

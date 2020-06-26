@@ -29,6 +29,8 @@ done
 log "Creating temp workspace in ${workingdir}"
 cp -a testdata/import/gutenberg/* $workingdir/import/
 
+source .env
+
 export BOOKSING_LOGLEVEL=debug
 export BOOKSING_ADMINUSER='erwin@gnur.nl'
 export BOOKSING_DATABASE="file://${workingdir}/booksing.db"
@@ -37,6 +39,10 @@ export BOOKSING_BOOKDIR="${workingdir}/"
 export BOOKSING_MEILI_HOST="http://localhost:7700"
 export BOOKSING_MEILI_INDEX="books"
 export BOOKSING_MEILI_KEY="masterKey"
+export BOOKSING_SECURE="false"
+export GOOGLE_KEY="$GKEY"
+export GOOGLE_SECRET="$GSECRET"
+export SESSION_SECRET="vJbh7i6tMWNN7BNYQ"
 
 
 air

@@ -96,7 +96,7 @@ func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
 
 	book.Hash = HashBook(book.Author, book.Title)
 
-	newBookPath := path.Join(baseDir, GetBookPath(book.Author, book.Title)+".epub")
+	newBookPath := path.Join(baseDir, GetBookPath(book.Title, book.Author)+".epub")
 	baseDir = filepath.Dir(newBookPath)
 	err = os.MkdirAll(baseDir, 0755)
 	if err == nil {

@@ -5,6 +5,7 @@ require (
 	github.com/Sereal/Sereal v0.0.0-20200611165018-70572ef94023 // indirect
 	github.com/asdine/storm v2.1.2+incompatible
 	github.com/beevik/etree v1.1.0
+	github.com/gin-contrib/sessions v0.0.3
 	github.com/gin-gonic/gin v1.6.3
 	github.com/go-playground/validator/v10 v10.3.0 // indirect
 	github.com/golang/protobuf v1.4.2 // indirect
@@ -13,6 +14,7 @@ require (
 	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/kennygrant/sanitize v1.2.4
+	github.com/markbates/goth v1.64.2
 	github.com/markbates/pkger v0.17.0
 	github.com/mattn/go-zglob v0.0.2
 	github.com/meilisearch/meilisearch-go v0.11.0

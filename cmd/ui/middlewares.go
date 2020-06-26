@@ -4,6 +4,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing"
 	"github.com/sirupsen/logrus"
@@ -56,13 +57,29 @@ func Logger(log *logrus.Entry) gin.HandlerFunc {
 
 func (app *booksingApp) BearerTokenMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		sess := sessions.Default(c)
+		u := sess.Get("username")
+		if u == nil {
+			app.logger.Warning("Could not get username from session")
+			c.Redirect(302, "/login")
+			c.Abort()
+			return
+		}
 
-		username := "erwin@gnur.nl"
+		username, ok := u.(string)
+		if !ok {
+			app.logger.Error("could not get username from session")
+			c.JSON(500, gin.H{
+				"msg": "internal server error",
+			})
+			c.Abort()
+			return
+		}
 
-		u, err := app.db.GetUser(username)
+		user, err := app.db.GetUser(username)
 		if err == booksing.ErrNotFound {
 			err = app.db.SaveUser(&booksing.User{
-				Username:  username,
+				Name:      username,
 				IsAdmin:   username == app.adminUser,
 				IsAllowed: username == app.adminUser,
 				Created:   time.Now(),
@@ -77,8 +94,8 @@ func (app *booksingApp) BearerTokenMiddleware() gin.HandlerFunc {
 				return
 			}
 		} else if err == nil {
-			u.LastSeen = time.Now()
-			err = app.db.SaveUser(&u)
+			user.LastSeen = time.Now()
+			err = app.db.SaveUser(&user)
 			if err != nil {
 				app.logger.Error("could not update user")
 				c.JSON(500, gin.H{
@@ -95,7 +112,7 @@ func (app *booksingApp) BearerTokenMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		if !u.IsAllowed {
+		if !user.IsAllowed {
 			c.JSON(430, gin.H{
 				"msg": "access denied",
 			})
@@ -103,7 +120,7 @@ func (app *booksingApp) BearerTokenMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		c.Set("id", &u)
+		c.Set("id", &user)
 
 	}
 }

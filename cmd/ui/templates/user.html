@@ -1,0 +1,20 @@
+{{define "user.html"}}
+{{template "base.html"}}
+
+<body>
+    <div class="container">
+        <p>Name: {{.Name}}</p>
+        <p>Email: {{.Email}}</p>
+        <p>NickName: {{.NickName}}</p>
+        <p>Location: {{.Location}}</p>
+        <p>AvatarURL: {{.AvatarURL}} <img src="{{.AvatarURL}}"></p>
+        <p>Description: {{.Description}}</p>
+        <p>UserID: {{.UserID}}</p>
+        <p>AccessToken: {{.AccessToken}}</p>
+
+    </div>
+</body>
+
+
+{{template "footer.html"}}
+{{end}}

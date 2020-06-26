@@ -2,9 +2,12 @@
 <nav class="navbar navbar-light bg-light">
     <div class="container-fluid">
         <a class="navbar-brand" href="/">Booksing</a>
+        <span class="navbar-text">
+            Index contains {{.TotalBooks}} books
+        </span>
         {{if gt .TimeTaken  0}}
         <span class="navbar-text">
-            Loaded results in: {{.TimeTaken}}ms
+            Found {{.Results}} book{{if ne .Results 1}}s{{end}} in {{.TimeTaken}}ms
         </span>
         {{end}}
         {{if .IsAdmin}}

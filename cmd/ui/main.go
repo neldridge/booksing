@@ -1,19 +1,24 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path"
 	"strings"
 	"time"
 
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing"
 	"github.com/gnur/booksing/meili"
 	"github.com/gnur/booksing/storm"
+	"github.com/markbates/goth"
+	"github.com/markbates/goth/gothic"
+	"github.com/markbates/goth/providers/google"
 	"github.com/markbates/pkger"
 
 	"github.com/kelseyhightower/envconfig"
@@ -22,20 +27,25 @@ import (
 
 // V is the holder struct for all possible template values
 type V struct {
-	Results   int
-	Error     error
-	Books     []booksing.Book
-	Q         string
-	TimeTaken int
-	IsAdmin   bool
-	Username  string
+	Results    int
+	Error      error
+	Books      []booksing.Book
+	Q          string
+	TimeTaken  int
+	IsAdmin    bool
+	Username   string
+	TotalBooks int
+	Limit      int64
+	Offset     int64
 }
 
 type configuration struct {
+	FQDN      string `default:"http://localhost:7132"`
 	AdminUser string `default:""`
 	BookDir   string `default:"."`
 	ImportDir string `default:"./import"`
 	Database  string `default:"file://booksing.db"`
+	Secure    bool   `default:"true"`
 	Meili     struct {
 		Host  string
 		Index string `default:"books"`
@@ -85,59 +95,14 @@ func main() {
 	}
 
 	tpl := template.New("")
-	tpl.Funcs(template.FuncMap{
-		"percent": func(a, b int) float64 {
-			return float64(a) / float64(b) * 100
-		},
-		"safeHTML": func(s interface{}) template.HTML {
-			return template.HTML(fmt.Sprint(s))
-		},
-		"prettyTime": func(s interface{}) template.HTML {
-			t, ok := s.(time.Time)
-			if !ok {
-				return ""
-			}
-			return template.HTML(t.Format("2006-01-02 15:04:05"))
-		},
-		"json": func(s interface{}) template.HTML {
-			json, _ := json.MarshalIndent(s, "", "  ")
-			return template.HTML(string(json))
-		},
-		"relativeTime": func(s interface{}) template.HTML {
-			t, ok := s.(time.Time)
-			if !ok {
-				return ""
-			}
-			tense := "ago"
-			diff := time.Since(t)
-			seconds := int64(diff.Seconds())
-			if seconds < 0 {
-				tense = "from now"
-			}
-			var quantifier string
+	tpl.Funcs(templateFunctions)
 
-			if seconds < 60 {
-				quantifier = "s"
-			} else if seconds < 3600 {
-				quantifier = "m"
-				seconds /= 60
-			} else if seconds < 86400 {
-				quantifier = "h"
-				seconds /= 3600
-			} else if seconds < 604800 {
-				quantifier = "d"
-				seconds /= 86400
-			} else if seconds < 31556736 {
-				quantifier = "w"
-				seconds /= 604800
-			} else {
-				quantifier = "y"
-				seconds /= 31556736
-			}
-
-			return template.HTML(fmt.Sprintf("%v%s %s", seconds, quantifier, tense))
-		},
-	})
+	goth.UseProviders(
+		google.New(os.Getenv("GOOGLE_KEY"), os.Getenv("GOOGLE_SECRET"), cfg.FQDN+"/auth/google/callback"),
+	)
+	gothic.GetProviderName = func(req *http.Request) (string, error) {
+		return "google", nil
+	}
 
 	err = pkger.Walk("/cmd/ui/templates", func(path string, info os.FileInfo, err error) error {
 		if strings.HasSuffix(path, ".html") {
@@ -178,16 +143,64 @@ func main() {
 	}
 
 	r := gin.New()
+	store := cookie.NewStore([]byte("secret"))
+	store.Options(sessions.Options{
+		MaxAge:   0,
+		HttpOnly: true,
+		Secure:   app.cfg.Secure,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+	})
+	r.Use(sessions.Sessions("booksing", store))
 	r.Use(Logger(app.logger), gin.Recovery())
 	r.SetHTMLTemplate(tpl)
-	r.GET("/", app.search)
-	r.GET("download", app.downloadBook)
 
-	auth := r.Group("/auth")
-	auth.Use(gin.Recovery(), app.BearerTokenMiddleware())
+	r.GET("/login", func(c *gin.Context) {
+		c.HTML(200, "index.html", nil)
+	})
+
+	r.GET("/kill", func(c *gin.Context) {
+		app.logger.Fatal("Killing so I get restarted anew")
+	})
+
+	r.GET("/status", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status": app.state,
+		})
+	})
+
+	r.GET("/auth/google", func(c *gin.Context) {
+		if u, err := gothic.CompleteUserAuth(c.Writer, c.Request); err == nil {
+			c.HTML(200, "user.html", u)
+			return
+		}
+		gothic.BeginAuthHandler(c.Writer, c.Request)
+	})
+	r.GET("/auth/google/callback", func(c *gin.Context) {
+		u, err := gothic.CompleteUserAuth(c.Writer, c.Request)
+		if err != nil {
+			c.HTML(200, "error.html", V{
+				Error: err,
+			})
+			return
+		}
+		sess := sessions.Default(c)
+		sess.Set("username", u.Email)
+		err = sess.Save()
+		app.logger.WithField("username", u.Email).Info("Storing username in session")
+		if err != nil {
+			app.logger.WithField("err", err).Error("Could not save session")
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+		c.Redirect(302, "/")
+	})
+
+	auth := r.Group("/")
+	auth.Use(app.BearerTokenMiddleware())
 	{
-		auth.GET("search", app.getBooks)
-		auth.GET("stats", app.getStats)
+		auth.GET("/", app.search)
+		auth.GET("download", app.downloadBook)
 
 	}
 

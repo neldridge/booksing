@@ -40,3 +40,13 @@ type AddBookInput struct {
 	Language    string `json:"language"`
 	Description string `json:"description"`
 }
+
+type AddBooksResult struct {
+	Added  int
+	Errors int
+}
+
+type BookCount struct {
+	Date  time.Time
+	Count int
+}

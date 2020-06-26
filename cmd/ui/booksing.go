@@ -28,7 +28,7 @@ var (
 func (app *booksingApp) refreshLoop() {
 	for {
 		app.refresh()
-		time.Sleep(time.Hour)
+		time.Sleep(time.Minute)
 	}
 }
 
@@ -144,6 +144,11 @@ func (app *booksingApp) refresh() {
 		return
 	}
 	defer atomic.StoreUint32(&locker, stateUnlocked)
+	defer func() {
+		app.state = "idle"
+	}()
+
+	app.state = "indexing"
 	app.logger.Info("starting refresh of booklist")
 	results := booksing.RefreshResult{
 		StartTime: time.Now(),
@@ -209,6 +214,14 @@ func (app *booksingApp) refresh() {
 		"invalid": results.Invalid,
 		"other":   results.Duplicate,
 	}).Info("finished refresh of booklist")
+	if results.Added > 0 {
+		err := app.db.UpdateBookCount(results.Added)
+		if err != nil {
+			app.logger.WithFields(logrus.Fields{
+				"err": err,
+			}).Warning("Failed to update book count in database")
+		}
+	}
 }
 func (app *booksingApp) refreshBooks(c *gin.Context) {
 	app.refresh()
