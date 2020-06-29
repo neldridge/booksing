@@ -18,6 +18,7 @@ type RefreshResult struct {
 	Added     int
 	Duplicate int
 	Invalid   int
+	Errors    int
 }
 
 type Download struct {

@@ -73,7 +73,6 @@ func (db *stormDB) GetUser(username string) (booksing.User, error) {
 }
 
 func (db *stormDB) SaveUser(u *booksing.User) error {
-	fmt.Println(u)
 	return db.db.Save(u)
 }
 
@@ -124,6 +123,19 @@ func (db *stormDB) UpdateBookCount(count int) error {
 func (db *stormDB) GetBookCountHistory(start, end time.Time) ([]booksing.BookCount, error) {
 	//TODO implement
 	return nil, nil
+}
+
+func (db *stormDB) AddHash(h string) error {
+	return db.db.Set("hashes", h, true)
+}
+
+func (db *stormDB) HasHash(h string) (bool, error) {
+	var b bool
+	err := db.db.Get("hashes", h, &b)
+	if err == storm.ErrNotFound {
+		return false, nil
+	}
+	return b, err
 }
 
 type dbBookCount struct {

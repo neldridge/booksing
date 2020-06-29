@@ -35,6 +35,7 @@ export BOOKSING_LOGLEVEL=debug
 export BOOKSING_ADMINUSER='erwin@gnur.nl'
 export BOOKSING_DATABASE="file://${workingdir}/booksing.db"
 export BOOKSING_IMPORTDIR="${workingdir}/import"
+export BOOKSING_FAILDIR="${workingdir}/failed"
 export BOOKSING_BOOKDIR="${workingdir}/"
 export BOOKSING_MEILI_HOST="http://localhost:7700"
 export BOOKSING_MEILI_INDEX="books"

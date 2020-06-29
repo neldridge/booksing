@@ -1,16 +1,19 @@
 module github.com/gnur/booksing
 
 require (
+	cloud.google.com/go v0.59.0 // indirect
 	github.com/DataDog/zstd v1.4.5 // indirect
 	github.com/Sereal/Sereal v0.0.0-20200611165018-70572ef94023 // indirect
 	github.com/asdine/storm v2.1.2+incompatible
+	github.com/avast/retry-go v2.6.0+incompatible
 	github.com/beevik/etree v1.1.0
 	github.com/gin-contrib/sessions v0.0.3
 	github.com/gin-gonic/gin v1.6.3
 	github.com/go-playground/validator/v10 v10.3.0 // indirect
-	github.com/golang/protobuf v1.4.2 // indirect
+	github.com/gobuffalo/here v0.6.2 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
-	github.com/google/go-cmp v0.5.0 // indirect
+	github.com/gorilla/mux v1.7.4 // indirect
+	github.com/gorilla/sessions v1.2.0 // indirect
 	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/kennygrant/sanitize v1.2.4
@@ -23,12 +26,11 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	go.etcd.io/bbolt v1.3.5 // indirect
-	golang.org/x/net v0.0.0-20200602114024-627f9648deb9 // indirect
-	golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4 // indirect
+	golang.org/x/net v0.0.0-20200625001655-4c5254603344 // indirect
+	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect
 	golang.org/x/text v0.3.3
-	golang.org/x/tools v0.0.0-20200624060801-dcbf2a9ed15d
-	google.golang.org/appengine v1.6.6 // indirect
-	google.golang.org/protobuf v1.24.0 // indirect
+	golang.org/x/tools v0.0.0-20200626171337-aa94e735be7f
+	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 )
 

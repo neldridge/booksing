@@ -1,7 +1,6 @@
 package main
 
 import (
-	"html/template"
 	"time"
 
 	"github.com/gnur/booksing"
@@ -18,7 +17,6 @@ type booksingApp struct {
 	FQDN      string
 	adminUser string
 	cfg       configuration
-	templates *template.Template
 	state     string
 }
 
@@ -35,6 +33,7 @@ const (
 	AddedBook     parseResult = iota
 	DuplicateBook parseResult = iota
 	InvalidBook   parseResult = iota
+	DBErrorBook   parseResult = iota
 )
 
 type database interface {
@@ -50,6 +49,9 @@ type database interface {
 	UpdateBookCount(int) error
 	GetBookCountHistory(time.Time, time.Time) ([]booksing.BookCount, error)
 
+	AddHash(string) error
+	HasHash(string) (bool, error)
+
 	Close()
 }
 
@@ -57,7 +59,6 @@ type search interface {
 	AddBook(*booksing.Book) error
 	AddBooks([]booksing.Book) (*booksing.AddBooksResult, error)
 
-	BookCount() int
 	GetBook(string) (*booksing.Book, error)
 	DeleteBook(string) error
 	GetBooks(string, int64, int64) ([]booksing.Book, error)

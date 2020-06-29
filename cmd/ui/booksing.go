@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing"
 	zglob "github.com/mattn/go-zglob"
@@ -70,7 +71,7 @@ func (app *booksingApp) downloadBook(c *gin.Context) {
 }
 
 func (app *booksingApp) getStats(c *gin.Context) {
-	count := app.s.BookCount()
+	count := app.db.GetBookCount()
 	c.JSON(200, gin.H{
 		"total": count,
 	})
@@ -127,7 +128,7 @@ func (app *booksingApp) getBooks(c *gin.Context) {
 			limit = a
 		}
 	}
-	resp.TotalCount = app.s.BookCount()
+	resp.TotalCount = app.db.GetBookCount()
 
 	books, err := app.s.GetBooks(filter, 0, limit)
 	if err != nil {
@@ -149,77 +150,88 @@ func (app *booksingApp) refresh() {
 	}()
 
 	app.state = "indexing"
-	app.logger.Info("starting refresh of booklist")
-	results := booksing.RefreshResult{
-		StartTime: time.Now(),
-	}
-	matches, err := zglob.Glob(filepath.Join(app.importDir, "/**/*.epub"))
-	if err != nil {
-		app.logger.WithField("err", err).Error("glob of all books failed")
-		return
-	}
-	if len(matches) == 0 {
-		app.logger.Info("finished refresh of booklist, no new books found")
-		return
-	}
-	app.logger.WithFields(logrus.Fields{
-		"total":   len(matches),
-		"bookdir": app.importDir,
-	}).Info("located books on filesystem")
-
-	bookQ := make(chan string, len(matches))
-	resultQ := make(chan parseResult)
-
-	for w := 0; w < 6; w++ { //not sure yet how concurrent-proof my solution is
-		go app.bookParser(bookQ, resultQ)
-	}
-
-	for _, filename := range matches {
-		bookQ <- filename
-	}
-
-	for a := 0; a < len(matches); a++ {
-		r := <-resultQ
-		app.logger.WithField("r", r).Debug("got book result")
-
-		switch r {
-		case OldBook:
-			results.Old++
-		case InvalidBook:
-			results.Invalid++
-		case AddedBook:
-			results.Added++
-		case DuplicateBook:
-			results.Duplicate++
+	for {
+		results := booksing.RefreshResult{
+			StartTime: time.Now(),
 		}
-		if a > 0 && a%100 == 0 {
-			app.logger.WithFields(logrus.Fields{
-				"processed": a,
-				"total":     len(matches),
-			}).Info("processing books")
-		}
-
-	}
-	total := app.s.BookCount()
-	if err != nil {
-		app.logger.WithField("err", err).Error("could not get total book count")
-	}
-	results.Old = total
-	results.StopTime = time.Now()
-
-	app.logger.WithFields(logrus.Fields{
-		"result":  results,
-		"old":     results.Old,
-		"added":   results.Added,
-		"invalid": results.Invalid,
-		"other":   results.Duplicate,
-	}).Info("finished refresh of booklist")
-	if results.Added > 0 {
-		err := app.db.UpdateBookCount(results.Added)
+		matches, err := zglob.Glob(filepath.Join(app.importDir, "/**/*.epub"))
 		if err != nil {
-			app.logger.WithFields(logrus.Fields{
-				"err": err,
-			}).Warning("Failed to update book count in database")
+			app.logger.WithField("err", err).Error("glob of all books failed")
+			return
+		}
+		if len(matches) == 0 {
+			return
+		}
+		app.logger.WithFields(logrus.Fields{
+			"total":     len(matches),
+			"bookdir":   app.importDir,
+			"batchsize": app.cfg.BatchSize,
+		}).Info("located books on filesystem, processing per batchsize")
+
+		if len(matches) > app.cfg.BatchSize {
+			matches = matches[0:app.cfg.BatchSize]
+		}
+
+		bookQ := make(chan string, len(matches))
+		resultQ := make(chan parseResult)
+
+		for w := 0; w < 5; w++ { //not sure yet how concurrent-proof my solution is
+			go app.bookParser(bookQ, resultQ)
+		}
+
+		for _, filename := range matches {
+			bookQ <- filename
+		}
+
+		for a := 0; a < len(matches); a++ {
+			r := <-resultQ
+
+			switch r {
+			case OldBook:
+				results.Old++
+			case InvalidBook:
+				results.Invalid++
+			case AddedBook:
+				results.Added++
+			case DuplicateBook:
+				results.Duplicate++
+			case DBErrorBook:
+				results.Errors++
+			}
+			if a > 0 && a%10 == 0 {
+				app.logger.WithFields(logrus.Fields{
+					"processed": a,
+					"old":       results.Old,
+					"invalid":   results.Invalid,
+					"duplicate": results.Duplicate,
+					"added":     results.Added,
+					"errors":    results.Errors,
+					"total":     len(matches),
+				}).Info("processing books")
+			}
+
+		}
+		total := app.db.GetBookCount()
+		if err != nil {
+			app.logger.WithField("err", err).Error("could not get total book count")
+		}
+		results.Old = total
+		results.StopTime = time.Now()
+
+		app.logger.WithFields(logrus.Fields{
+			"old":       results.Old,
+			"invalid":   results.Invalid,
+			"duplicate": results.Duplicate,
+			"added":     results.Added,
+			"errors":    results.Errors,
+		}).Info("finished refresh of booklist")
+		if results.Added > 0 {
+			err := app.db.UpdateBookCount(results.Added)
+			if err != nil {
+				app.logger.WithFields(logrus.Fields{
+					"err": err,
+				}).Warning("Failed to update book count in database")
+			}
 		}
 	}
 }
@@ -235,26 +247,47 @@ func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) 
 				"file":   filename,
 				"reason": "invalid",
 			}).Info("Deleting book")
-			os.Remove(filename)
+			app.moveBookToFailed(book)
 			resultQ <- InvalidBook
 			continue
 		}
-		err = app.s.AddBook(book)
+		exists, err := app.db.HasHash(book.Hash)
+		if err != nil {
+			app.logger.WithFields(logrus.Fields{
+				"hash": book.Hash,
+				"err":  err,
+			}).Warning("Unable to get hash from db")
+			app.moveBookToFailed(book)
+		}
+		if exists {
+			os.Remove(filename)
+			resultQ <- DuplicateBook
+		}
+
+		err = retry.Do(func() error {
+			return app.s.AddBook(book)
+		},
+			retry.Attempts(10),
+			retry.DelayType(retry.BackOffDelay),
+			retry.RetryIf(func(err error) bool {
+				return err != booksing.ErrDuplicate
+			}),
+			retry.LastErrorOnly(true),
+		)
+
 		if err != nil {
 			app.logger.WithFields(logrus.Fields{
 				"file": filename,
 				"err":  err,
 			}).Error("could not store book")
 
-			if err == booksing.ErrDuplicate {
-				app.logger.WithFields(logrus.Fields{
-					"file":   filename,
-					"reason": "duplicate",
-				}).Info("Deleting book")
-				os.Remove(filename)
-				resultQ <- DuplicateBook
-			}
+			app.moveBookToFailed(book)
+			resultQ <- DBErrorBook
 		} else {
+			err = app.db.AddHash(book.Hash)
+			if err != nil {
+				app.logger.WithError(err).Error("failed storing hash in db")
+			}
 			resultQ <- AddedBook
 		}
 	}
@@ -303,4 +336,23 @@ func (app *booksingApp) deleteBook(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"text": "ok",
 	})
+}
+
+func (app *booksingApp) moveBookToFailed(b *booksing.Book) {
+	err := os.MkdirAll(app.cfg.FailDir, 0755)
+	if err != nil {
+		app.logger.WithError(err).Fatal("unable to create fail dir")
+		return
+	}
+	bookpath := b.Path
+	filename := path.Base(bookpath)
+	newBookPath := path.Join(app.cfg.FailDir, filename)
+	err = os.Rename(bookpath, newBookPath)
+	if err != nil {
+		app.logger.WithFields(logrus.Fields{
+			"faildir": app.cfg.FailDir,
+			"book":    bookpath,
+		}).WithError(err).Fatal("unable to move book to faildir")
+		return
+	}
 }

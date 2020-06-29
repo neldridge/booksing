@@ -44,6 +44,7 @@ type configuration struct {
 	AdminUser string `default:""`
 	BookDir   string `default:"."`
 	ImportDir string `default:"./import"`
+	FailDir   string `default:"./failed"`
 	Database  string `default:"file://booksing.db"`
 	Secure    bool   `default:"true"`
 	Meili     struct {
@@ -54,6 +55,7 @@ type configuration struct {
 	LogLevel    string `default:"info"`
 	BindAddress string `default:"localhost:7132"`
 	Timezone    string `default:"Europe/Amsterdam"`
+	BatchSize   int    `default:"50"`
 }
 
 func main() {
@@ -162,6 +164,7 @@ func main() {
 	r.GET("/kill", func(c *gin.Context) {
 		app.logger.Fatal("Killing so I get restarted anew")
 	})
+	r.GET("/refresh", app.refreshBooks)
 
 	r.GET("/status", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -200,7 +203,8 @@ func main() {
 	auth.Use(app.BearerTokenMiddleware())
 	{
 		auth.GET("/", app.search)
-		auth.GET("download", app.downloadBook)
+		auth.GET("/download", app.downloadBook)
+		auth.GET("/users", app.showUsers)
 
 	}
 
@@ -208,7 +212,6 @@ func main() {
 	admin.Use(gin.Recovery(), app.BearerTokenMiddleware(), app.mustBeAdmin())
 	{
 		admin.POST("user/:username", app.updateUser)
-		admin.POST("refresh", app.refreshBooks)
 		admin.POST("delete", app.deleteBook)
 	}
 

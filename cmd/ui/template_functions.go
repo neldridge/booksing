@@ -62,7 +62,6 @@ var templateFunctions = template.FuncMap{
 				v.Add("o", fmt.Sprintf("%v", start))
 			}
 		}
-		fmt.Println(v.Encode())
 		return template.URL(v.Encode())
 
 	},

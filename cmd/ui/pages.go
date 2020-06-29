@@ -1,11 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gnur/booksing"
 )
 
 func (app *booksingApp) search(c *gin.Context) {
@@ -53,5 +55,48 @@ func (app *booksingApp) search(c *gin.Context) {
 		Q:          q,
 		IsAdmin:    app.IsUserAdmin(c),
 		TotalBooks: app.db.GetBookCount(),
+	})
+}
+
+func (app *booksingApp) showUsers(c *gin.Context) {
+
+	u, ok := c.Get("id")
+	if !ok {
+		c.HTML(403, "error.html", V{
+			Error: fmt.Errorf("Unable to retrieve user from context"),
+		})
+		c.Abort()
+		return
+	}
+
+	user, ok := u.(*booksing.User)
+	if !ok {
+		c.HTML(403, "error.html", V{
+			Error: fmt.Errorf("Unable to cast id into booksing.User: %+v", u),
+		})
+		c.Abort()
+		return
+	}
+
+	if !user.IsAdmin {
+		c.HTML(403, "error.html", V{
+			Error: fmt.Errorf("You don't have permission to do that"),
+		})
+		c.Abort()
+		return
+	}
+
+	users, err := app.db.GetUsers()
+	if err != nil {
+		c.HTML(403, "error.html", V{
+			Error: err,
+		})
+		c.Abort()
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"status": "ok",
+		"users":  users,
 	})
 }

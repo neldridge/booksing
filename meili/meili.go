@@ -34,12 +34,7 @@ func New(host, index, key string) (*Meili, error) {
 }
 
 func (s *Meili) AddBook(b *booksing.Book) error {
-	_, err := s.GetBookByHash(b.Hash)
-	if err == nil {
-		return booksing.ErrDuplicate
-	}
-
-	_, err = s.client.Documents(s.index).AddOrUpdate([]booksing.Book{*b})
+	_, err := s.client.Documents(s.index).AddOrUpdate([]booksing.Book{*b})
 	if err != nil {
 		return fmt.Errorf("Unable to insert book: %w", err)
 	}
@@ -57,10 +52,6 @@ func (s *Meili) AddBooks(books []booksing.Book) (*booksing.AddBooksResult, error
 		}
 	}
 	return &res, nil
-}
-
-func (s *Meili) BookCount() int {
-	return 4
 }
 
 func (s *Meili) GetBook(q string) (*booksing.Book, error) {
@@ -92,7 +83,6 @@ func (s *Meili) GetBooks(q string, limit, offset int64) ([]booksing.Book, error)
 			if err != nil {
 				return nil, fmt.Errorf("Unable to get results from meili: %w", err)
 			}
-			fmt.Println(tDiff.String(), q, len(res.Hits))
 			if len(res.Hits) > 0 {
 				hits = res.Hits
 				break
@@ -114,7 +104,6 @@ func (s *Meili) GetBooks(q string, limit, offset int64) ([]booksing.Book, error)
 	for _, hit := range hits {
 		m, ok := hit.(map[string]interface{})
 		if !ok {
-			fmt.Println("CASTING FAILED")
 			continue
 		}
 		var b booksing.Book
