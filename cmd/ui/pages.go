@@ -9,10 +9,13 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gnur/booksing"
 	"github.com/sirupsen/logrus"
 )
 
 func (app *booksingApp) search(c *gin.Context) {
+	u := c.MustGet("id")
+	user := u.(*booksing.User)
 
 	start := time.Now()
 	var offset int64
@@ -45,6 +48,10 @@ func (app *booksingApp) search(c *gin.Context) {
 		return
 	}
 
+	if user.SavedBooks == nil {
+		user.SavedBooks = make(map[string]*booksing.ShelveIcon)
+	}
+
 	stop := time.Since(start)
 	latency := int(math.Ceil(float64(stop.Nanoseconds()) / 1000000.0))
 	c.HTML(200, "search.html", V{
@@ -53,6 +60,7 @@ func (app *booksingApp) search(c *gin.Context) {
 		Results:    len(books),
 		TimeTaken:  latency,
 		Books:      books,
+		Icons:      user.SavedBooks,
 		Error:      err,
 		Q:          q,
 		IsAdmin:    c.GetBool("isAdmin"),
@@ -146,5 +154,37 @@ func (app *booksingApp) showDownloads(c *gin.Context) {
 		TotalBooks: app.db.GetBookCount(),
 		Downloads:  dls,
 	})
+
+}
+
+func (app *booksingApp) rotateIcon(c *gin.Context) {
+	hash := c.Param("hash")
+
+	u := c.MustGet("id")
+	user := u.(*booksing.User)
+
+	if user.SavedBooks == nil {
+		user.SavedBooks = make(map[string]*booksing.ShelveIcon)
+	}
+
+	currentIcon, ok := user.SavedBooks[hash]
+	if !ok {
+		currentIcon = booksing.DefaultShelveIcon()
+	}
+
+	newIcon, err := booksing.NextShelveIcon(currentIcon[0])
+	if err != nil {
+		newIcon = booksing.DefaultShelveIcon()
+	}
+
+	user.SavedBooks[hash] = newIcon
+	err = app.db.SaveUser(user)
+	if err != nil {
+		c.HTML(500, "error.html", V{
+			Error: err,
+		})
+		return
+	}
+	c.Redirect(302, c.Request.Referer())
 
 }

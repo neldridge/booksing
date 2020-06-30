@@ -8,16 +8,19 @@ import (
 )
 
 type booksingApp struct {
-	s         search
-	db        database
-	bookDir   string
-	importDir string
-	logger    *logrus.Entry
-	timezone  *time.Location
-	FQDN      string
-	adminUser string
-	cfg       configuration
-	state     string
+	s            search
+	db           database
+	bookDir      string
+	importDir    string
+	logger       *logrus.Entry
+	timezone     *time.Location
+	FQDN         string
+	adminUser    string
+	cfg          configuration
+	state        string
+	bookQ        chan string
+	resultQ      chan parseResult
+	saveInterval time.Duration
 }
 
 type parseResult int32

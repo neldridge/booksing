@@ -8,6 +8,7 @@
             style="overflow-x: auto; white-space: nowrap">
             <thead>
                 <tr>
+                    <th></th>
                     <th scope="col">author</th>
                     <th scope="col">title</th>
                     <th scope="col">added</th>
@@ -17,6 +18,12 @@
             <tbody>
                 {{range .Books}}
                 <tr>
+                    <td>
+                        {{$icon := index $.Icons .Hash}}
+                        <a href="/rotateShelve/{{.Hash}}">
+                            {{icon $icon}}
+                        </a>
+                    </td>
                     <td>{{.Author}}</td>
                     <td>{{.Title}}</td>
                     <td>{{.Added | relativeTime}}</td>
@@ -48,8 +55,7 @@
                             <div class="modal-footer">
                                 {{if $.IsAdmin}}
                                 <form method="POST" action="/admin/delete/{{.Hash}}">
-                                    <button type="submit" class="btn btn-danger"
-                                        href="/download?hash={{.Hash}}">Delete</button>
+                                    <button type="submit" class="btn btn-danger">Delete</button>
                                 </form>
                                 {{end}}
                                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>

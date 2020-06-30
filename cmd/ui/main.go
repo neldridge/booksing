@@ -31,6 +31,7 @@ type V struct {
 	Error      error
 	Books      []booksing.Book
 	Book       *booksing.Book
+	Icons      map[string]*booksing.ShelveIcon
 	Users      []booksing.User
 	Downloads  []booksing.Download
 	Q          string
@@ -55,10 +56,12 @@ type configuration struct {
 		Index string `default:"books"`
 		Key   string `required:"true"`
 	}
-	LogLevel    string `default:"info"`
-	BindAddress string `default:"localhost:7132"`
-	Timezone    string `default:"Europe/Amsterdam"`
-	BatchSize   int    `default:"50"`
+	LogLevel     string `default:"info"`
+	BindAddress  string `default:"localhost:7132"`
+	Timezone     string `default:"Europe/Amsterdam"`
+	BatchSize    int    `default:"50"`
+	Workers      int    `default:"5"`
+	SaveInterval string `default:"10s"`
 }
 
 func main() {
@@ -86,6 +89,11 @@ func main() {
 		defer db.Close()
 	} else {
 		log.Fatal("invalid database chosen")
+	}
+
+	interval, err := time.ParseDuration(cfg.SaveInterval)
+	if err != nil {
+		interval = 10 * time.Second
 	}
 
 	tz, err := time.LoadLocation(cfg.Timezone)
@@ -133,18 +141,25 @@ func main() {
 	}
 
 	app := booksingApp{
-		db:        db,
-		s:         s,
-		bookDir:   cfg.BookDir,
-		importDir: cfg.ImportDir,
-		timezone:  tz,
-		adminUser: cfg.AdminUser,
-		logger:    log.WithField("app", "booksing"),
-		cfg:       cfg,
+		db:           db,
+		s:            s,
+		bookDir:      cfg.BookDir,
+		importDir:    cfg.ImportDir,
+		timezone:     tz,
+		adminUser:    cfg.AdminUser,
+		logger:       log.WithField("app", "booksing"),
+		cfg:          cfg,
+		bookQ:        make(chan string),
+		resultQ:      make(chan parseResult),
+		saveInterval: interval,
 	}
 
 	if cfg.ImportDir != "" {
 		go app.refreshLoop()
+		for w := 0; w < 5; w++ { //not sure yet how concurrent-proof my solution is
+			go app.bookParser()
+		}
+		go app.resultParser()
 	}
 
 	r := gin.New()
@@ -159,6 +174,8 @@ func main() {
 	r.Use(sessions.Sessions("booksing", store))
 	r.Use(Logger(app.logger), gin.Recovery())
 	r.SetHTMLTemplate(tpl)
+
+	r.StaticFS("/static", pkger.Dir("/cmd/ui/static"))
 
 	r.GET("/login", func(c *gin.Context) {
 		c.HTML(200, "index.html", nil)
@@ -205,6 +222,7 @@ func main() {
 	auth.Use(app.BearerTokenMiddleware())
 	{
 		auth.GET("/", app.search)
+		auth.GET("/rotateShelve/:hash", app.rotateIcon)
 		auth.GET("/download", app.downloadBook)
 
 	}
