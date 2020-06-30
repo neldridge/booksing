@@ -1,13 +1,15 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"math"
+	"os"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gnur/booksing"
+	"github.com/sirupsen/logrus"
 )
 
 func (app *booksingApp) search(c *gin.Context) {
@@ -17,7 +19,7 @@ func (app *booksingApp) search(c *gin.Context) {
 	var limit int64
 	var err error
 	offset = 0
-	limit = 30
+	limit = 20
 	q := c.Query("q")
 	off := c.Query("o")
 	if off != "" {
@@ -30,7 +32,7 @@ func (app *booksingApp) search(c *gin.Context) {
 	if lim != "" {
 		limit, err = strconv.ParseInt(lim, 10, 64)
 		if err != nil {
-			limit = 30
+			limit = 20
 		}
 	}
 
@@ -53,38 +55,12 @@ func (app *booksingApp) search(c *gin.Context) {
 		Books:      books,
 		Error:      err,
 		Q:          q,
-		IsAdmin:    app.IsUserAdmin(c),
+		IsAdmin:    c.GetBool("isAdmin"),
 		TotalBooks: app.db.GetBookCount(),
 	})
 }
 
 func (app *booksingApp) showUsers(c *gin.Context) {
-
-	u, ok := c.Get("id")
-	if !ok {
-		c.HTML(403, "error.html", V{
-			Error: fmt.Errorf("Unable to retrieve user from context"),
-		})
-		c.Abort()
-		return
-	}
-
-	user, ok := u.(*booksing.User)
-	if !ok {
-		c.HTML(403, "error.html", V{
-			Error: fmt.Errorf("Unable to cast id into booksing.User: %+v", u),
-		})
-		c.Abort()
-		return
-	}
-
-	if !user.IsAdmin {
-		c.HTML(403, "error.html", V{
-			Error: fmt.Errorf("You don't have permission to do that"),
-		})
-		c.Abort()
-		return
-	}
 
 	users, err := app.db.GetUsers()
 	if err != nil {
@@ -95,8 +71,80 @@ func (app *booksingApp) showUsers(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{
-		"status": "ok",
-		"users":  users,
+	c.HTML(200, "users.html", V{
+		Error:      err,
+		Q:          "",
+		IsAdmin:    c.GetBool("isAdmin"),
+		TotalBooks: app.db.GetBookCount(),
+		Users:      users,
 	})
+
+}
+
+func (app *booksingApp) deleteBook(c *gin.Context) {
+	hash := c.Param("hash")
+
+	book, err := app.s.GetBookByHash(hash)
+	if err != nil {
+		c.HTML(404, "error.html", V{
+			Error: errors.New("Book not found"),
+		})
+		return
+	}
+
+	err = os.Remove(book.Path)
+	if err != nil {
+		app.logger.WithFields(logrus.Fields{
+			"hash": hash,
+			"err":  err,
+			"path": book.Path,
+		}).Error("Could not delete book from filesystem")
+		c.HTML(500, "error.html", V{
+			Error: fmt.Errorf("Unable to delete book from filesystem: %w", err),
+		})
+		return
+	}
+
+	err = app.s.DeleteBook(hash)
+	if err != nil {
+		app.logger.WithFields(logrus.Fields{
+			"hash": hash,
+			"err":  err,
+		}).Error("Could not delete book from database")
+		c.HTML(500, "error.html", V{
+			Error: fmt.Errorf("Unable to delete book from database: %w", err),
+		})
+		return
+	}
+	err = app.db.UpdateBookCount(-1)
+	if err != nil {
+		app.logger.WithFields(logrus.Fields{
+			"hash": hash,
+			"err":  err,
+		}).Error("could not update book count")
+	}
+	app.logger.WithFields(logrus.Fields{
+		"hash": hash,
+	}).Info("book was deleted")
+	c.Redirect(302, c.Request.Referer())
+}
+
+func (app *booksingApp) showDownloads(c *gin.Context) {
+	dls, err := app.db.GetDownloads(100)
+	if err != nil {
+		c.HTML(403, "error.html", V{
+			Error: err,
+		})
+		c.Abort()
+		return
+	}
+
+	c.HTML(200, "downloads.html", V{
+		Error:      err,
+		Q:          "",
+		IsAdmin:    c.GetBool("isAdmin"),
+		TotalBooks: app.db.GetBookCount(),
+		Downloads:  dls,
+	})
+
 }

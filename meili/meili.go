@@ -54,17 +54,15 @@ func (s *Meili) AddBooks(books []booksing.Book) (*booksing.AddBooksResult, error
 	return &res, nil
 }
 
-func (s *Meili) GetBook(q string) (*booksing.Book, error) {
-	return &booksing.Book{
-		Author:      "auteur 1",
-		Title:       "titel 1",
-		Added:       time.Now(),
-		Description: "",
-	}, nil
+func (s *Meili) GetBook(hash string) (*booksing.Book, error) {
+	var b booksing.Book
+	err := s.client.Documents(s.index).Get(hash, &b)
+	return &b, err
 }
 
 func (s *Meili) DeleteBook(hash string) error {
-	return nil
+	_, err := s.client.Documents(s.index).Delete(hash)
+	return err
 }
 
 func (s *Meili) GetBooks(q string, limit, offset int64) ([]booksing.Book, error) {

@@ -47,6 +47,9 @@ var templateFunctions = template.FuncMap{
 		if !ok {
 			return ""
 		}
+		if t.IsZero() {
+			return template.HTML("never")
+		}
 		return template.HTML(t.Format("2006-01-02 15:04:05"))
 	},
 	"page": func(dir, q string, offset, limit int64) template.URL {
@@ -73,6 +76,9 @@ var templateFunctions = template.FuncMap{
 		t, ok := s.(time.Time)
 		if !ok {
 			return ""
+		}
+		if t.IsZero() {
+			return template.HTML("never")
 		}
 		tense := "ago"
 		diff := time.Since(t)

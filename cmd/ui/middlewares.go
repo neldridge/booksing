@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"math"
 	"time"
 
@@ -113,28 +114,25 @@ func (app *booksingApp) BearerTokenMiddleware() gin.HandlerFunc {
 			return
 		}
 		if !user.IsAllowed {
-			c.JSON(430, gin.H{
-				"msg": "access denied",
+			c.HTML(403, "error.html", V{
+				Error: errors.New("User is not allowed to perform this action"),
 			})
 			c.Abort()
 			return
 		}
 
 		c.Set("id", &user)
-
+		c.Set("isAdmin", user.IsAdmin)
 	}
 }
 
 func (app *booksingApp) mustBeAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id := c.MustGet("id")
-		user := id.(*booksing.User)
-		if !user.IsAdmin {
-			c.JSON(403, gin.H{
-				"msg": "access denied",
+		if !c.GetBool("isAdmin") {
+			c.HTML(403, "error.html", V{
+				Error: errors.New("User is not allowed to perform this action"),
 			})
 			c.Abort()
-			return
 		}
 	}
 }

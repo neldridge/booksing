@@ -30,6 +30,9 @@ type V struct {
 	Results    int
 	Error      error
 	Books      []booksing.Book
+	Book       *booksing.Book
+	Users      []booksing.User
+	Downloads  []booksing.Download
 	Q          string
 	TimeTaken  int
 	IsAdmin    bool
@@ -164,7 +167,6 @@ func main() {
 	r.GET("/kill", func(c *gin.Context) {
 		app.logger.Fatal("Killing so I get restarted anew")
 	})
-	r.GET("/refresh", app.refreshBooks)
 
 	r.GET("/status", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -173,8 +175,8 @@ func main() {
 	})
 
 	r.GET("/auth/google", func(c *gin.Context) {
-		if u, err := gothic.CompleteUserAuth(c.Writer, c.Request); err == nil {
-			c.HTML(200, "user.html", u)
+		if _, err := gothic.CompleteUserAuth(c.Writer, c.Request); err == nil {
+			c.Redirect(302, "/")
 			return
 		}
 		gothic.BeginAuthHandler(c.Writer, c.Request)
@@ -204,15 +206,17 @@ func main() {
 	{
 		auth.GET("/", app.search)
 		auth.GET("/download", app.downloadBook)
-		auth.GET("/users", app.showUsers)
 
 	}
 
 	admin := r.Group("/admin")
 	admin.Use(gin.Recovery(), app.BearerTokenMiddleware(), app.mustBeAdmin())
 	{
+		admin.GET("/users", app.showUsers)
+		admin.GET("/downloads", app.showDownloads)
+		admin.POST("/delete/:hash", app.deleteBook)
 		admin.POST("user/:username", app.updateUser)
-		admin.POST("delete", app.deleteBook)
+		admin.POST("/adduser", app.addUser)
 	}
 
 	log.Info("booksing is now running")

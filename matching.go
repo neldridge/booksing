@@ -10,7 +10,6 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-var onlyLower = regexp.MustCompile("[^a-z]+")
 var leadingNumbers = regexp.MustCompile("^ *[0-9]+")
 var betweenParentheses = regexp.MustCompile(`\(.*\)`)
 var betweenBockHooks = regexp.MustCompile(`\[.*\]`)
@@ -19,12 +18,6 @@ var leadingZeroes = regexp.MustCompile(`^ *(0)([0-9]+) `)
 var alphaNumeric = regexp.MustCompile(`[^a-z0-9]+`)
 
 //var year = regexp.MustCompile(`(19[0-9]{2})|(20[0-9]{2})`)
-
-var uselessWords = []string{
-	"le", "la", "et",
-	"de", "het", "en",
-	"the", "and", "a", "an",
-}
 
 func HashBook(author, title string) string {
 	author = strings.ToLower(author)
@@ -74,18 +67,4 @@ func removeAccents(in string) string {
 		return in
 	}
 	return s
-}
-
-func unique(input []string) []string {
-	u := make([]string, 0, len(input))
-	m := make(map[string]bool)
-
-	for _, val := range input {
-		if _, ok := m[val]; !ok {
-			m[val] = true
-			u = append(u, val)
-		}
-	}
-
-	return u
 }

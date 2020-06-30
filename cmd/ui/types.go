@@ -20,11 +20,6 @@ type booksingApp struct {
 	state     string
 }
 
-type bookResponse struct {
-	Books      []booksing.Book `json:"books"`
-	TotalCount int             `json:"total"`
-}
-
 type parseResult int32
 
 // hold all possible book parse results

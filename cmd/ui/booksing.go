@@ -5,8 +5,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -45,11 +43,8 @@ func (app *booksingApp) downloadBook(c *gin.Context) {
 		}).Error("could not find book")
 		return
 	}
-	/* TODO: actually load user
 	user := c.MustGet("id")
-	username := user.(*booksing.User).Username
-	*/
-	username := "erwin@gnur.nl"
+	username := user.(*booksing.User).Name
 
 	ip := c.ClientIP()
 	dl := booksing.Download{
@@ -67,14 +62,6 @@ func (app *booksingApp) downloadBook(c *gin.Context) {
 	c.Header("Content-Disposition",
 		fmt.Sprintf("attachment; filename=\"%s\"", fName))
 	c.File(book.Path)
-	app.logger.WithField("path", book.Path).Info("Starting download")
-}
-
-func (app *booksingApp) getStats(c *gin.Context) {
-	count := app.db.GetBookCount()
-	c.JSON(200, gin.H{
-		"total": count,
-	})
 }
 
 func (app *booksingApp) updateUser(c *gin.Context) {
@@ -82,17 +69,19 @@ func (app *booksingApp) updateUser(c *gin.Context) {
 	dbUser, err := app.db.GetUser(id)
 	if err != nil {
 		app.logger.WithField("err", err).Error("Could not get user")
-		c.JSON(500, gin.H{
-			"text": "could not find user",
+		c.HTML(500, "error.html", V{
+			Error: err,
 		})
 		c.Abort()
+		return
 	}
 	var u booksing.User
 	if err := c.ShouldBind(&u); err != nil {
 		app.logger.WithField("err", err).Warning("could not get values from post")
-		c.JSON(400, gin.H{
-			"text": err.Error(),
+		c.HTML(400, "error.html", V{
+			Error: err,
 		})
+		c.Abort()
 		return
 	}
 
@@ -106,37 +95,7 @@ func (app *booksingApp) updateUser(c *gin.Context) {
 		c.Abort()
 	}
 
-	c.JSON(200, gin.H{"text": "ok"})
-}
-
-func (app *booksingApp) getBooks(c *gin.Context) {
-
-	var resp bookResponse
-	numString := c.DefaultQuery("results", "100")
-	filter := strings.ToLower(c.Query("filter"))
-	filter = strings.TrimSpace(filter)
-	var limit int64
-	limit = 1000
-
-	app.logger.WithFields(logrus.Fields{
-		//"user":   r.Header.Get("x-auth-user"),
-		"filter": filter,
-	}).Info("user initiated search")
-
-	if a, err := strconv.ParseInt(numString, 10, 64); err == nil {
-		if a > 0 && a < 1000 {
-			limit = a
-		}
-	}
-	resp.TotalCount = app.db.GetBookCount()
-
-	books, err := app.s.GetBooks(filter, 0, limit)
-	if err != nil {
-		app.logger.WithField("err", err).Error("error retrieving books")
-	}
-	resp.Books = books
-
-	c.JSON(200, resp)
+	c.Redirect(302, c.Request.Referer())
 }
 
 func (app *booksingApp) refresh() {
@@ -247,8 +206,8 @@ func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) 
 				"file":   filename,
 				"reason": "invalid",
 			}).Info("Deleting book")
-			app.moveBookToFailed(book)
 			resultQ <- InvalidBook
+			app.moveBookToFailed(filename)
 			continue
 		}
 		exists, err := app.db.HasHash(book.Hash)
@@ -257,11 +216,14 @@ func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) 
 				"hash": book.Hash,
 				"err":  err,
 			}).Warning("Unable to get hash from db")
-			app.moveBookToFailed(book)
+			resultQ <- DBErrorBook
+			app.moveBookToFailed(filename)
+			continue
 		}
 		if exists {
 			os.Remove(filename)
 			resultQ <- DuplicateBook
+			continue
 		}
 
 		err = retry.Do(func() error {
@@ -281,7 +243,7 @@ func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) 
 				"err":  err,
 			}).Error("could not store book")
 
-			app.moveBookToFailed(book)
+			app.moveBookToFailed(filename)
 			resultQ <- DBErrorBook
 		} else {
 			err = app.db.AddHash(book.Hash)
@@ -293,58 +255,12 @@ func (app *booksingApp) bookParser(bookQ chan string, resultQ chan parseResult) 
 	}
 }
 
-type deleteRequest struct {
-	Hash string `form:"hash"`
-}
-
-func (app *booksingApp) deleteBook(c *gin.Context) {
-	var req deleteRequest
-	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(400, gin.H{
-			"text": err.Error(),
-		})
-		return
-	}
-	app.logger.WithField("req", req).Info("got delete request")
-	hash := req.Hash
-
-	book, err := app.s.GetBookByHash(hash)
-	if err != nil {
-		return
-	}
-
-	err = os.Remove(book.Path)
-	if err != nil {
-		app.logger.WithFields(logrus.Fields{
-			"hash": hash,
-			"err":  err,
-			"path": book.Path,
-		}).Error("Could not delete book from filesystem")
-	}
-
-	err = app.s.DeleteBook(hash)
-	if err != nil {
-		app.logger.WithFields(logrus.Fields{
-			"hash": hash,
-			"err":  err,
-		}).Error("Could not delete book from database")
-		return
-	}
-	app.logger.WithFields(logrus.Fields{
-		"hash": hash,
-	}).Info("book was deleted")
-	c.JSON(200, gin.H{
-		"text": "ok",
-	})
-}
-
-func (app *booksingApp) moveBookToFailed(b *booksing.Book) {
+func (app *booksingApp) moveBookToFailed(bookpath string) {
 	err := os.MkdirAll(app.cfg.FailDir, 0755)
 	if err != nil {
-		app.logger.WithError(err).Fatal("unable to create fail dir")
+		app.logger.WithError(err).Error("unable to create fail dir")
 		return
 	}
-	bookpath := b.Path
 	filename := path.Base(bookpath)
 	newBookPath := path.Join(app.cfg.FailDir, filename)
 	err = os.Rename(bookpath, newBookPath)
@@ -352,7 +268,31 @@ func (app *booksingApp) moveBookToFailed(b *booksing.Book) {
 		app.logger.WithFields(logrus.Fields{
 			"faildir": app.cfg.FailDir,
 			"book":    bookpath,
-		}).WithError(err).Fatal("unable to move book to faildir")
+		}).WithError(err).Error("unable to move book to faildir")
 		return
 	}
+}
+
+func (app *booksingApp) addUser(c *gin.Context) {
+	var u booksing.User
+	if err := c.ShouldBind(&u); err != nil {
+		app.logger.WithField("err", err).Warning("could not get values from post")
+		c.HTML(400, "error.html", V{
+			Error: err,
+		})
+		c.Abort()
+		return
+	}
+
+	u.Created = time.Now().In(app.timezone)
+	err := app.db.SaveUser(&u)
+	if err != nil {
+		app.logger.WithField("err", err).Error("Could not update user")
+		c.JSON(500, gin.H{
+			"text": "could not find user",
+		})
+		c.Abort()
+	}
+
+	c.Redirect(302, c.Request.Referer())
 }

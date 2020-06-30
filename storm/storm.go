@@ -41,9 +41,8 @@ func (db *stormDB) AddDownload(dl download) error {
 }
 
 func (db *stormDB) GetDownloads(limit int) ([]download, error) {
-	//TODO: do something with limit
 	var dls []download
-	err := db.db.All(&dls)
+	err := db.db.All(&dls, storm.Limit(limit), storm.Reverse())
 	return dls, err
 }
 
