@@ -80,7 +80,7 @@ var templateFunctions = template.FuncMap{
 			in = booksing.DefaultShelveIcon()
 		}
 		return template.HTML(fmt.Sprintf(`<svg class="bi %s" width="32" height="32" fill="currentColor">
-                            <use xlink:href="/static/bootstrap-icons.svg#%s" />
+                            <use xlink:href="/static/b-icons.svg#%s" />
                         </svg>`, in[1], in[0]))
 
 	},

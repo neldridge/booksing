@@ -41,6 +41,7 @@ type V struct {
 	TotalBooks int
 	Limit      int64
 	Offset     int64
+	Indexing   bool
 }
 
 type configuration struct {

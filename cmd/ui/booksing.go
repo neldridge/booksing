@@ -226,7 +226,6 @@ func (app *booksingApp) bookParser() {
 			continue
 		}
 		if exists {
-			os.Remove(filename)
 			app.resultQ <- DuplicateBook
 			continue
 		}
@@ -236,10 +235,6 @@ func (app *booksingApp) bookParser() {
 		},
 			retry.Attempts(10),
 			retry.DelayType(retry.BackOffDelay),
-			retry.RetryIf(func(err error) bool {
-				return err != booksing.ErrDuplicate
-			}),
-			retry.LastErrorOnly(true),
 		)
 
 		if err != nil {

@@ -65,6 +65,7 @@ func (app *booksingApp) search(c *gin.Context) {
 		Q:          q,
 		IsAdmin:    c.GetBool("isAdmin"),
 		TotalBooks: app.db.GetBookCount(),
+		Indexing:   app.state == "indexing",
 	})
 }
 
@@ -85,6 +86,7 @@ func (app *booksingApp) showUsers(c *gin.Context) {
 		IsAdmin:    c.GetBool("isAdmin"),
 		TotalBooks: app.db.GetBookCount(),
 		Users:      users,
+		Indexing:   app.state == "indexing",
 	})
 
 }
@@ -153,6 +155,7 @@ func (app *booksingApp) showDownloads(c *gin.Context) {
 		IsAdmin:    c.GetBool("isAdmin"),
 		TotalBooks: app.db.GetBookCount(),
 		Downloads:  dls,
+		Indexing:   app.state == "indexing",
 	})
 
 }

@@ -1,9 +1,17 @@
 {{define "nav.html"}}
 <nav class="navbar navbar-light bg-light navbar-expand-lg">
     <div class="container-fluid">
-        <a class="navbar-brand" href="/">Booksing</a>
+        <a class="navbar-brand" href="/">
+            <img src="/static/booksing.svg" width="30" height="30" class="d-inline-block align-top" alt=""
+                loading="lazy">
+            Booksing</a>
         {{if .IsAdmin}}
         <ul class="navbar-nav">
+            {{if .Indexing}}
+            <div class="spinner-border" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+            {{end}}
             <li class="nav-item">
                 <a class="nav-link" href="/admin/users">users</a>
             </li>
