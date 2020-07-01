@@ -17,6 +17,12 @@ var templateFunctions = template.FuncMap{
 	"safeHTML": func(s interface{}) template.HTML {
 		return template.HTML(fmt.Sprint(s))
 	},
+	"crop": func(s string, i int) string {
+		if len(s) > i {
+			return s[0:(i-2)] + "..."
+		}
+		return s
+	},
 	"Iterate": func(offset, limit int64, results int) [][2]int64 {
 		var i int64
 		var Items [][2]int64
