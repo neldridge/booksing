@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/avast/retry-go"
 	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing"
 	zglob "github.com/mattn/go-zglob"
@@ -225,33 +224,20 @@ func (app *booksingApp) bookParser() {
 			app.moveBookToFailed(filename)
 			continue
 		}
+
+		//all books get added to meili, even duplicates
+		app.meiliQ <- *book
+
 		if exists {
 			app.resultQ <- DuplicateBook
 			continue
 		}
 
-		err = retry.Do(func() error {
-			return app.s.AddBook(book)
-		},
-			retry.Attempts(10),
-			retry.DelayType(retry.BackOffDelay),
-		)
-
+		err = app.db.AddHash(book.Hash)
 		if err != nil {
-			app.logger.WithFields(logrus.Fields{
-				"file": filename,
-				"err":  err,
-			}).Error("could not store book")
-
-			app.moveBookToFailed(filename)
-			app.resultQ <- DBErrorBook
-		} else {
-			err = app.db.AddHash(book.Hash)
-			if err != nil {
-				app.logger.WithError(err).Error("failed storing hash in db")
-			}
-			app.resultQ <- AddedBook
+			app.logger.WithError(err).Error("failed storing hash in db")
 		}
+		app.resultQ <- AddedBook
 	}
 }
 
@@ -295,4 +281,44 @@ func (app *booksingApp) addUser(c *gin.Context) {
 	}
 
 	c.Redirect(302, c.Request.Referer())
+}
+
+func (app *booksingApp) meiliUpdater() {
+	lastSave := time.Now()
+	ticker := time.NewTicker(app.saveInterval)
+	var books []booksing.Book
+
+	for {
+		app.logger.WithField("bookstoupdate", len(books)).Debug("meili books ready to update")
+		select {
+		case <-ticker.C:
+			app.logger.Debug("Storing results from ticker")
+			if time.Since(lastSave) < app.saveInterval {
+				continue
+			} else if len(books) == 0 {
+				continue
+			}
+			err := app.s.AddBooks(books, true)
+			if err != nil {
+				app.logger.WithFields(logrus.Fields{
+					"err": err,
+				}).Error("Failed updating meili index")
+			}
+			books = []booksing.Book{}
+			lastSave = time.Now()
+		case b := <-app.meiliQ:
+			books = append(books, b)
+
+			if len(books) >= app.cfg.BatchSize {
+				err := app.s.AddBooks(books, true)
+				if err != nil {
+					app.logger.WithFields(logrus.Fields{
+						"err": err,
+					}).Error("Failed updating meili index")
+				}
+				books = []booksing.Book{}
+				lastSave = time.Now()
+			}
+		}
+	}
 }

@@ -152,6 +152,7 @@ func main() {
 		cfg:          cfg,
 		bookQ:        make(chan string),
 		resultQ:      make(chan parseResult),
+		meiliQ:       make(chan booksing.Book),
 		saveInterval: interval,
 	}
 
@@ -161,6 +162,7 @@ func main() {
 			go app.bookParser()
 		}
 		go app.resultParser()
+		go app.meiliUpdater()
 	}
 
 	r := gin.New()

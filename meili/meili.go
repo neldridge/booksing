@@ -27,31 +27,43 @@ func New(host, index, key string) (*Meili, error) {
 	if err != nil && !strings.Contains(err.Error(), "already exists") {
 		return nil, fmt.Errorf("Unable to create index: %w", err)
 	}
+
 	return &Meili{
 		client: client,
 		index:  index,
 	}, nil
 }
 
-func (s *Meili) AddBook(b *booksing.Book) error {
-	_, err := s.client.Documents(s.index).AddOrUpdate([]booksing.Book{*b})
-	if err != nil {
-		return fmt.Errorf("Unable to insert book: %w", err)
-	}
-	return nil
-}
+func (s *Meili) AddBooks(books []booksing.Book, sync bool) error {
 
-func (s *Meili) AddBooks(books []booksing.Book) (*booksing.AddBooksResult, error) {
-	var res booksing.AddBooksResult
+	//BUG workaround: https://github.com/meilisearch/MeiliSearch/issues/827
+	uniquebooks := []booksing.Book{}
+	hashes := make(map[string]bool)
 	for _, b := range books {
-		err := s.AddBook(&b)
-		if err != nil {
-			res.Errors++
-		} else {
-			res.Added++
+		if _, present := hashes[b.Hash]; !present {
+			uniquebooks = append(uniquebooks, b)
+			hashes[b.Hash] = true
 		}
 	}
-	return &res, nil
+
+	id, err := s.client.Documents(s.index).AddOrUpdate(uniquebooks)
+	if err != nil {
+		return fmt.Errorf("Unable to insert books: %w", err)
+	}
+
+	if sync {
+		for {
+			up, err := s.client.Updates(s.index).Get(id.UpdateID)
+			if up.Status == "processed" {
+				break
+			}
+			if err != nil {
+				return fmt.Errorf("Unable to get update status for updateID %v books: %w", id.UpdateID, err)
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+	return nil
 }
 
 func (s *Meili) GetBook(hash string) (*booksing.Book, error) {

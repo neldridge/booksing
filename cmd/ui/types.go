@@ -20,6 +20,7 @@ type booksingApp struct {
 	state        string
 	bookQ        chan string
 	resultQ      chan parseResult
+	meiliQ       chan booksing.Book
 	saveInterval time.Duration
 }
 
@@ -54,8 +55,7 @@ type database interface {
 }
 
 type search interface {
-	AddBook(*booksing.Book) error
-	AddBooks([]booksing.Book) (*booksing.AddBooksResult, error)
+	AddBooks([]booksing.Book, bool) error
 
 	GetBook(string) (*booksing.Book, error)
 	DeleteBook(string) error

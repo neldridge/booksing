@@ -1,5 +1,7 @@
 #!/bin/bash
 
+ulimit -S -n 1024
+
 workingdir=$(mktemp -d)
 mkdir "${workingdir}/import"
 
@@ -40,6 +42,7 @@ export BOOKSING_BOOKDIR="${workingdir}/"
 export BOOKSING_MEILI_HOST="http://localhost:7700"
 export BOOKSING_MEILI_INDEX="books"
 export BOOKSING_MEILI_KEY="masterKey"
+export BOOKSING_SAVEINTERVAL="2s"
 export BOOKSING_SECURE="false"
 export GOOGLE_KEY="$GKEY"
 export GOOGLE_SECRET="$GSECRET"
