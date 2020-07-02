@@ -5,7 +5,6 @@ require (
 	github.com/DataDog/zstd v1.4.5 // indirect
 	github.com/Sereal/Sereal v0.0.0-20200611165018-70572ef94023 // indirect
 	github.com/asdine/storm v2.1.2+incompatible
-	github.com/avast/retry-go v2.6.0+incompatible
 	github.com/beevik/etree v1.1.0
 	github.com/gin-contrib/sessions v0.0.3
 	github.com/gin-gonic/gin v1.6.3

@@ -11,8 +11,14 @@ X-Meili-API-Key: {{key}}
 
 ###
 
+# @name getKeys
+GET {{host}}/keys
+X-Meili-API-Key: {{key}}
+
+###
+
 # @name dropindex
-DELETE {{host}}/indexes/test
+DELETE {{host}}/indexes/books
 X-Meili-API-Key: {{key}}
 
 ###
