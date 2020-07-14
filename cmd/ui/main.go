@@ -168,7 +168,7 @@ func main() {
 	r := gin.New()
 	store := cookie.NewStore([]byte("secret"))
 	store.Options(sessions.Options{
-		MaxAge:   0,
+		MaxAge:   60 * 60 * 24 * 30, //~30 days
 		HttpOnly: true,
 		Secure:   app.cfg.Secure,
 		SameSite: http.SameSiteLaxMode,
@@ -178,7 +178,10 @@ func main() {
 	r.Use(Logger(app.logger), gin.Recovery())
 	r.SetHTMLTemplate(tpl)
 
-	r.StaticFS("/static", pkger.Dir("/cmd/ui/static"))
+	static := r.Group("/", func(c *gin.Context) {
+		c.Header("Cache-Control", "public, max-age=86400, immutable")
+	})
+	static.StaticFS("/static", pkger.Dir("/cmd/ui/static"))
 
 	r.GET("/login", func(c *gin.Context) {
 		c.HTML(200, "index.html", nil)
