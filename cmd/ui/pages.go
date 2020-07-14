@@ -191,3 +191,35 @@ func (app *booksingApp) rotateIcon(c *gin.Context) {
 	c.Redirect(302, c.Request.Referer())
 
 }
+
+func (app *booksingApp) bookmarks(c *gin.Context) {
+	u := c.MustGet("id")
+	user := u.(*booksing.User)
+	var books []booksing.Book
+
+	start := time.Now()
+	if user.SavedBooks == nil {
+		user.SavedBooks = make(map[string]*booksing.ShelveIcon)
+	}
+
+	for hash := range user.SavedBooks {
+		b, err := app.s.GetBook(hash)
+		if err != nil {
+			continue
+		}
+		books = append(books, *b)
+	}
+
+	stop := time.Since(start)
+	latency := int(math.Ceil(float64(stop.Nanoseconds()) / 1000000.0))
+	c.HTML(200, "bookmarks.html", V{
+		Results:    len(books),
+		TimeTaken:  latency,
+		Books:      books,
+		Icons:      user.SavedBooks,
+		Q:          "",
+		IsAdmin:    c.GetBool("isAdmin"),
+		TotalBooks: app.db.GetBookCount(),
+		Indexing:   app.state == "indexing",
+	})
+}

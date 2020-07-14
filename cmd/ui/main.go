@@ -228,6 +228,7 @@ func main() {
 	auth.Use(app.BearerTokenMiddleware())
 	{
 		auth.GET("/", app.search)
+		auth.GET("/bookmarks", app.bookmarks)
 		auth.GET("/rotateShelve/:hash", app.rotateIcon)
 		auth.GET("/download", app.downloadBook)
 
