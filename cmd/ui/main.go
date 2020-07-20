@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -20,6 +21,7 @@ import (
 	"github.com/markbates/goth/gothic"
 	"github.com/markbates/goth/providers/google"
 	"github.com/markbates/pkger"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/kelseyhightower/envconfig"
 	log "github.com/sirupsen/logrus"
@@ -154,6 +156,7 @@ func main() {
 		resultQ:      make(chan parseResult),
 		meiliQ:       make(chan booksing.Book),
 		saveInterval: interval,
+		sessionMap:   sync.Map{},
 	}
 
 	if cfg.ImportDir != "" {
@@ -183,9 +186,63 @@ func main() {
 	})
 	static.StaticFS("/static", pkger.Dir("/cmd/ui/static"))
 
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
 	r.GET("/login", func(c *gin.Context) {
-		c.HTML(200, "index.html", nil)
+		c.HTML(200, "login.html", nil)
 	})
+
+	qr := r.Group("/qr")
+	{
+		qr.GET("/login", func(c *gin.Context) {
+			c.HTML(200, "qr-auth.html", gin.H{
+				"AuthCode": randID(),
+			})
+		})
+
+		qr.GET("/img/:code", app.generateQR)
+
+		qr.GET("/poll/:code", func(c *gin.Context) {
+			code := c.Param("code")
+			user, ok := app.sessionMap.Load(code)
+			if !ok {
+				c.JSON(200, gin.H{
+					"status": "no",
+				})
+				return
+			}
+			app.sessionMap.Delete("username")
+			sess := sessions.Default(c)
+			sess.Set("username", user)
+			err := sess.Save()
+			if err != nil {
+				app.logger.WithError(err).Error("failed saving session")
+				c.JSON(200, gin.H{
+					"status": "no",
+				})
+				return
+			}
+			c.JSON(200, gin.H{
+				"status": "yes",
+			})
+		})
+
+		qrAuth := qr.Group("", app.BearerTokenMiddleware())
+		{
+			qrAuth.GET("/authorize/:code", func(c *gin.Context) {
+				code := c.Param("code")
+				c.HTML(200, "qr-approve.html", gin.H{
+					"AuthCode": code,
+				})
+			})
+			qrAuth.GET("/approve/:code", func(c *gin.Context) {
+				code := c.Param("code")
+				sess := sessions.Default(c)
+				app.sessionMap.Store(code, sess.Get("username"))
+				c.Redirect(http.StatusFound, "/")
+			})
+		}
+	}
 
 	r.GET("/kill", func(c *gin.Context) {
 		app.logger.Fatal("Killing so I get restarted anew")

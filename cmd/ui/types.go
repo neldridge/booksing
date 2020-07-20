@@ -1,6 +1,7 @@
 package main
 
 import (
+	"sync"
 	"time"
 
 	"github.com/gnur/booksing"
@@ -22,6 +23,7 @@ type booksingApp struct {
 	resultQ      chan parseResult
 	meiliQ       chan booksing.Book
 	saveInterval time.Duration
+	sessionMap   sync.Map
 }
 
 type parseResult int32

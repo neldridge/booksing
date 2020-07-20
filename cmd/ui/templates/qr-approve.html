@@ -1,0 +1,28 @@
+{{define "qr-approve.html"}}
+{{template "base.html"}}
+
+<style>
+    html,
+    body {
+        height: 100%;
+    }
+
+    body {
+        display: flex;
+        align-items: center;
+        padding-top: 40px;
+        padding-bottom: 40px;
+        background-color: #f5f5f5;
+    }
+</style>
+
+<body class="text-center">
+    <div class="container">
+        <h1 class="title">Press approve if you want to allow the other device to access booksing</h1>
+        <a class="button" href="/qr/approve/{{.AuthCode}}">approve</a>
+    </div>
+</body>
+
+
+{{template "footer.html"}}
+{{end}}

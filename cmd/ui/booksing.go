@@ -202,9 +202,18 @@ func (app *booksingApp) refreshBooks(c *gin.Context) {
 }
 
 func (app *booksingApp) bookParser() {
+	epubParseProccessed := booksProcessed.WithLabelValues("parse")
+	epubParseTime := booksProcessedTime.WithLabelValues("parse")
+
+	indexProccessed := booksProcessed.WithLabelValues("index")
+	indexTime := booksProcessedTime.WithLabelValues("index")
 	for filename := range app.bookQ {
 		app.logger.WithField("f", filename).Debug("parsing book")
+		start := time.Now()
 		book, err := booksing.NewBookFromFile(filename, app.bookDir)
+		duration := time.Since(start).Microseconds()
+		epubParseProccessed.Inc()
+		epubParseTime.Add(float64(duration) / 1000000)
 		if err != nil {
 			app.logger.WithFields(logrus.Fields{
 				"file":   filename,
@@ -222,6 +231,7 @@ func (app *booksingApp) bookParser() {
 			}).Warning("Unable to get hash from db")
 			app.resultQ <- DBErrorBook
 			app.moveBookToFailed(filename)
+			dbErrors.WithLabelValues("read").Inc()
 			continue
 		}
 
@@ -233,9 +243,15 @@ func (app *booksingApp) bookParser() {
 			continue
 		}
 
+		start = time.Now()
 		err = app.db.AddHash(book.Hash)
 		if err != nil {
+			dbErrors.WithLabelValues("write").Inc()
 			app.logger.WithError(err).Error("failed storing hash in db")
+		} else {
+			duration := time.Since(start).Microseconds()
+			indexProccessed.Inc()
+			indexTime.Add(float64(duration) / 10000000)
 		}
 		app.resultQ <- AddedBook
 	}
@@ -287,6 +303,9 @@ func (app *booksingApp) meiliUpdater() {
 	lastSave := time.Now()
 	ticker := time.NewTicker(app.saveInterval)
 	var books []booksing.Book
+	meiliProccessed := booksProcessed.WithLabelValues("meili")
+	meiliTime := booksProcessedTime.WithLabelValues("meili")
+	meiliErrors := meiliErrors.WithLabelValues("update")
 
 	for {
 		app.logger.WithField("bookstoupdate", len(books)).Debug("meili books ready to update")
@@ -298,23 +317,38 @@ func (app *booksingApp) meiliUpdater() {
 			} else if len(books) == 0 {
 				continue
 			}
+			start := time.Now()
 			err := app.s.AddBooks(books, true)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
 					"err": err,
 				}).Error("Failed updating meili index")
+				meiliErrors.Inc()
+			} else {
+				//only update metrics if it succeeded
+				duration := time.Since(start).Microseconds()
+				meiliProccessed.Add(float64(len(books)))
+				meiliTime.Add(float64(duration) / 1000000)
 			}
+
 			books = []booksing.Book{}
 			lastSave = time.Now()
 		case b := <-app.meiliQ:
 			books = append(books, b)
 
 			if len(books) >= app.cfg.BatchSize {
+				start := time.Now()
 				err := app.s.AddBooks(books, true)
 				if err != nil {
+					meiliErrors.Inc()
 					app.logger.WithFields(logrus.Fields{
 						"err": err,
 					}).Error("Failed updating meili index")
+				} else {
+					//only update metrics if it succeeded
+					duration := time.Since(start).Microseconds()
+					meiliProccessed.Add(float64(len(books)))
+					meiliTime.Add(float64(duration) / 1000000)
 				}
 				books = []booksing.Book{}
 				lastSave = time.Now()

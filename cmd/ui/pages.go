@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -11,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing"
 	"github.com/sirupsen/logrus"
+	qrcode "github.com/skip2/go-qrcode"
 )
 
 func (app *booksingApp) search(c *gin.Context) {
@@ -67,6 +70,30 @@ func (app *booksingApp) search(c *gin.Context) {
 		TotalBooks: app.db.GetBookCount(),
 		Indexing:   app.state == "indexing",
 	})
+}
+
+func (app *booksingApp) generateQR(c *gin.Context) {
+
+	code := c.Param("code")
+	code = code[:len(code)-4]
+
+	url := fmt.Sprintf("%s/qr/authorize/%s", app.cfg.FQDN, code)
+
+	png, err := qrcode.Encode(url, qrcode.Medium, 256)
+	if err != nil {
+		c.HTML(500, "error.html", V{
+			Error: err,
+			Q:     "",
+		})
+		return
+	}
+
+	reader := bytes.NewReader(png)
+	contentLength := int64(len(png))
+	contentType := "image/png"
+	extraHeaders := map[string]string{"Content-Disposition": `attachment; filename="gopher.png"`}
+
+	c.DataFromReader(http.StatusOK, contentLength, contentType, reader, extraHeaders)
 }
 
 func (app *booksingApp) showUsers(c *gin.Context) {
