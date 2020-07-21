@@ -17,9 +17,6 @@ import (
 )
 
 func (app *booksingApp) search(c *gin.Context) {
-	u := c.MustGet("id")
-	user := u.(*booksing.User)
-
 	start := time.Now()
 	var offset int64
 	var limit int64
@@ -51,10 +48,6 @@ func (app *booksingApp) search(c *gin.Context) {
 		return
 	}
 
-	if user.SavedBooks == nil {
-		user.SavedBooks = make(map[string]*booksing.ShelveIcon)
-	}
-
 	stop := time.Since(start)
 	latency := int(math.Ceil(float64(stop.Nanoseconds()) / 1000000.0))
 	c.HTML(200, "search.html", V{
@@ -63,7 +56,6 @@ func (app *booksingApp) search(c *gin.Context) {
 		Results:    len(books),
 		TimeTaken:  latency,
 		Books:      books,
-		Icons:      user.SavedBooks,
 		Error:      err,
 		Q:          q,
 		IsAdmin:    c.GetBool("isAdmin"),
@@ -193,21 +185,22 @@ func (app *booksingApp) rotateIcon(c *gin.Context) {
 	u := c.MustGet("id")
 	user := u.(*booksing.User)
 
-	if user.SavedBooks == nil {
-		user.SavedBooks = make(map[string]*booksing.ShelveIcon)
+	currentIcon := booksing.DefaultShelveIcon()
+
+	bm, ok := user.Bookmarks[hash]
+	if ok {
+		currentIcon = bm.Icon
 	}
 
-	currentIcon, ok := user.SavedBooks[hash]
-	if !ok {
-		currentIcon = booksing.DefaultShelveIcon()
-	}
-
-	newIcon, err := booksing.NextShelveIcon(currentIcon[0])
+	newIcon, err := booksing.NextShelveIcon(currentIcon)
 	if err != nil {
 		newIcon = booksing.DefaultShelveIcon()
 	}
 
-	user.SavedBooks[hash] = newIcon
+	user.Bookmarks[hash] = booksing.Bookmark{
+		Icon:       newIcon,
+		LastChange: time.Now(),
+	}
 	err = app.db.SaveUser(user)
 	if err != nil {
 		c.HTML(500, "error.html", V{
@@ -215,7 +208,13 @@ func (app *booksingApp) rotateIcon(c *gin.Context) {
 		})
 		return
 	}
-	c.Redirect(302, c.Request.Referer())
+	if c.Query("method") == "manual" {
+		c.Redirect(302, c.Request.Referer())
+		return
+	}
+	c.JSON(200, gin.H{
+		"msg": "ok",
+	})
 
 }
 
@@ -225,11 +224,8 @@ func (app *booksingApp) bookmarks(c *gin.Context) {
 	var books []booksing.Book
 
 	start := time.Now()
-	if user.SavedBooks == nil {
-		user.SavedBooks = make(map[string]*booksing.ShelveIcon)
-	}
 
-	for hash := range user.SavedBooks {
+	for hash := range user.Bookmarks {
 		b, err := app.s.GetBook(hash)
 		if err != nil {
 			continue
@@ -243,10 +239,27 @@ func (app *booksingApp) bookmarks(c *gin.Context) {
 		Results:    len(books),
 		TimeTaken:  latency,
 		Books:      books,
-		Icons:      user.SavedBooks,
 		Q:          "",
 		IsAdmin:    c.GetBool("isAdmin"),
 		TotalBooks: app.db.GetBookCount(),
 		Indexing:   app.state == "indexing",
 	})
+}
+
+func (app *booksingApp) serveIcon(c *gin.Context) {
+	hash := c.Param("hash")
+
+	u := c.MustGet("id")
+	user := u.(*booksing.User)
+
+	hash = hash[:len(hash)-4]
+
+	currentIcon := booksing.DefaultShelveIcon()
+	bm, ok := user.Bookmarks[hash]
+	if ok {
+		currentIcon = bm.Icon
+	}
+
+	c.Redirect(http.StatusFound, fmt.Sprintf("/static/%s.png", currentIcon))
+
 }

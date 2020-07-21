@@ -6,26 +6,26 @@ import (
 
 var ErrInvalidShelveIcon = errors.New("Invalid shelve icon provided")
 
-type ShelveIcon [2]string
+type ShelveIcon string
 
 //next shelve icon
 var shelveIcons = []ShelveIcon{
-	{"star", "text-secondary"},
-	{"star-fill", "text-warning"},
-	{"book-half", "text-dark"},
-	{"check-circle", "text-success"},
-	{"x-circle", "text-danger"},
+	"star-outline",
+	"star",
+	"book-open-outline",
+	"checkmark-circle-outline",
+	"close-outline",
 }
 
-func NextShelveIcon(cur string) (*ShelveIcon, error) {
+func NextShelveIcon(cur ShelveIcon) (ShelveIcon, error) {
 	for i, icon := range shelveIcons {
-		if icon[0] == cur {
-			return &shelveIcons[(i+1)%len(shelveIcons)], nil
+		if icon == cur {
+			return shelveIcons[(i+1)%len(shelveIcons)], nil
 		}
 	}
-	return nil, ErrInvalidShelveIcon
+	return DefaultShelveIcon(), ErrInvalidShelveIcon
 }
 
-func DefaultShelveIcon() *ShelveIcon {
-	return &shelveIcons[0]
+func DefaultShelveIcon() ShelveIcon {
+	return shelveIcons[0]
 }

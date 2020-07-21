@@ -6,8 +6,6 @@ import (
 	"html/template"
 	"net/url"
 	"time"
-
-	"github.com/gnur/booksing"
 )
 
 var templateFunctions = template.FuncMap{
@@ -79,16 +77,6 @@ var templateFunctions = template.FuncMap{
 	"json": func(s interface{}) template.HTML {
 		json, _ := json.MarshalIndent(s, "", "  ")
 		return template.HTML(string(json))
-	},
-	"icon": func(in *booksing.ShelveIcon) template.HTML {
-
-		if in == nil {
-			in = booksing.DefaultShelveIcon()
-		}
-		return template.HTML(fmt.Sprintf(`<svg class="bi %s" width="32" height="32" fill="currentColor">
-                            <use xlink:href="/static/b-icons.svg#%s" />
-                        </svg>`, in[1], in[0]))
-
 	},
 	"relativeTime": func(s interface{}) template.HTML {
 		t, ok := s.(time.Time)

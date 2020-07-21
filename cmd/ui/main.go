@@ -33,7 +33,6 @@ type V struct {
 	Error      error
 	Books      []booksing.Book
 	Book       *booksing.Book
-	Icons      map[string]*booksing.ShelveIcon
 	Users      []booksing.User
 	Downloads  []booksing.Download
 	Q          string
@@ -299,7 +298,9 @@ func main() {
 		auth.GET("/", app.search)
 		auth.GET("/bookmarks", app.bookmarks)
 		auth.GET("/rotateShelve/:hash", app.rotateIcon)
+		auth.POST("/rotateShelve/:hash", app.rotateIcon)
 		auth.GET("/download", app.downloadBook)
+		auth.GET("/icons/:hash", app.serveIcon)
 
 	}
 

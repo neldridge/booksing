@@ -5,7 +5,7 @@
     {{template "nav.html" .}}
     <div class="container">
         <div class="table-responsive">
-            <table class="table table-sm align-middle table-hover" style="overflow-x: auto; white-space: nowrap">
+            <table class="table table-sm align-middle" style="overflow-x: auto; white-space: nowrap">
                 <thead>
                     <tr>
                         <th></th>
@@ -19,9 +19,8 @@
                     {{range .Books}}
                     <tr>
                         <td>
-                            {{$icon := index $.Icons .Hash}}
-                            <a href="/rotateShelve/{{.Hash}}">
-                                {{icon $icon}}
+                            <a href="/rotateShelve/{{.Hash}}?method=manual" class="rotateButton" data-hash="{{.Hash}}">
+                                <img src="/icons/{{.Hash}}.png" id="{{.Hash}}_icon" width="32" height="32" />
                             </a>
                         </td>
                         <td>{{crop .Author 30}}</td>
