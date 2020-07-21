@@ -206,9 +206,13 @@ func main() {
 			code := c.Param("code")
 			user, ok := app.sessionMap.Load(code)
 			if !ok {
-				c.JSON(200, gin.H{
-					"status": "no",
-				})
+				if c.Query("method") == "manual" {
+					c.Redirect(http.StatusFound, c.Request.Referer())
+				} else {
+					c.JSON(200, gin.H{
+						"status": "no",
+					})
+				}
 				return
 			}
 			app.sessionMap.Delete("username")
@@ -217,9 +221,17 @@ func main() {
 			err := sess.Save()
 			if err != nil {
 				app.logger.WithError(err).Error("failed saving session")
-				c.JSON(200, gin.H{
-					"status": "no",
-				})
+				if c.Query("method") == "manual" {
+					c.Redirect(http.StatusFound, c.Request.Referer())
+				} else {
+					c.JSON(200, gin.H{
+						"status": "no",
+					})
+				}
+				return
+			}
+			if c.Query("method") == "manual" {
+				c.Redirect(http.StatusFound, "/")
 				return
 			}
 			c.JSON(200, gin.H{
