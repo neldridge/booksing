@@ -1,0 +1,24 @@
+{{define "footer.html"}}
+<script>
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+    var rotateButtonList = [].slice.call(document.querySelectorAll('.rotateButton'))
+    var res = rotateButtonList.map(el => {
+        el.addEventListener("click", (e) => {
+            var hash = el.dataset.hash;
+            fetch("/rotateShelve/" + hash, { method: "POST" })
+                .then(raw => raw.json())
+                .then(r => {
+                    if (r.msg && r.msg == "ok") {
+                        el.children[0].src = el.children[0].src + "?raw=" + new Date().getTime();
+                    }
+                });
+            e.preventDefault();
+        });
+    });
+</script>
+
+</html>
+{{end}}

@@ -1,57 +1,56 @@
 # booksing
-A tool to browse epubs and convert them to mobi ebooks using kindlegen. 
+<img src="./gopher.png" width="350" alt="nerdy gopher">
+A tool to browse epubs.
 
 Heavily inspired by https://github.com/geek1011/BookBrowser/
 
-Build status: 
-[![CircleCI](https://circleci.com/gh/gnur/booksing.svg?style=svg)](https://circleci.com/gh/gnur/booksing)
-
-## installation
+## Installation
 Download an appropriate release from the [release](https://github.com/gnur/booksing/releases) page
 
 
 ## Features
 - Easy-to-use
-- Searches for query in authors name and title of book
+- Google sign in
+- Super fast search thanks to meilisearch (can easily search 100k+ books within 500ms)
+- QR based login flow for lower powered devices (use your phone to grant access to your ereader)
 - List view
 - "Responsive" web interface
-- Sorted by Author
-- Conversion to mobi with Amazon [kindlegen](https://www.amazon.com/gp/feature.html?docId=1000765211)
-- automatic deletion of duplicates and unparsable epubs
-  - epubs are marked as duplicates when the author and title are exactly the same (after fixing case and last name, first name issues)
-  - if an epub is unparsable by booksing, it is deleted if `ALLOW_DELETES` is set, this doesn't always mean your e-reader cannot read it!
-- The first scan takes the longest, as all epubs are parsed from scratch, additional scans only parse new epubs.
-  - setting `ALLOW_DELETES` speeds up this process as well, because duplicates get parsed every scan
-- The speed is highly dependant on the `DATABASE_LOCATION`. If at all possible, place this on a SSD. This will speed up all operations a lot!
-- With the `DATABASE_LOCATION` on an SSD, it is possible to re-scan more than 15.000 epubs on an external drive within a few seconds on limited (atom processor) hardware
+- Automatic deletion of duplicates and unparsable epubs
+- Create bookmarks to track what you want to read, have read and stopped reading
+- Grant access from the admin page
+- See what books have been downloaded
 
 ## Requirements
-Only if you want to convert your epubs for kindle reading
-- kindlegen should be in $PATH
-- ebook-convert should be in $PATH (usually automatically installed when installing calibre)
+Booksing only depends on [meilisearch](https://www.meilisearch.com/).
+
+## Configuration
+
+Set the following env vars to configure booksing:
+
+| env var               | default                 | required           | purpose                                                                                                         |
+|-----------------------|-------------------------|--------------------|-----------------------------------------------------------------------------------------------------------------|
+| BOOKSING_ADMINUSER    | `-`                     | :white_check_mark: | This determines the admin user, the only user that can login by default                                         |
+| BOOKSING_BOOKDIR      | `.`                     | :x:                | The directery where books are stored after importing                                                            |
+| BOOKSING_FAILDIR      | `./failed`              | :x:                | The directory where books are moved if the import fails                                                         |
+| BOOKSING_FQDN         | `http://localhost:7132` | :x:                | used to set the session cookie and callback for google auth                                                     |
+| BOOKSING_IMPORTDIR    | `./import`              | :x:                | The directory where booksing will periodically look for books                                                   |
+| BOOKSING_LOGLEVEL     | `info`                  | :x:                | determines the loglevel, supported values: error, warning, info, debug                                          |
+| BOOKSING_MEILI_HOST   | `http://localhost:7700` | :x:                | [meilisearch](https://www.meilisearch.com/) host (used for storing book information)                            |
+| BOOKSING_MEILI_INDEX  | `books`                 | :x:                | The index used in meilisearch to store the book information                                                     |
+| BOOKSING_MEILI_KEY    | `-`                     | :white_check_mark: | The key used to put stuff in meilisearch, needs write access                                                    |
+| BOOKSING_BATCHSIZE    | `50`                    | :x:                | The amount of books that will be stored in the databases at a time                                              |
+| BOOKSING_BINDADDRESS  | `localhost:7132`        | :x:                | The bind address, if external access is needed this should be changed to `:7132`                                |
+| BOOKSING_DATABASE     | `file://booksing.db`    | :x:                | The path to put the database file (bbolt based)                                                                 |
+| BOOKSING_SAVEINTERVAL | `10s`                   | :x:                | The time between saves if the batchsize is not reached yet                                                      |
+| BOOKSING_SECRET       | `-`                     | :white_check_mark: | The secret used to encrypt the session cookie                                                                   |
+| BOOKSING_TIMEZONE     | `Europe/Amsterdam`      | :x:                | Timezone used for storing all time information                                                                  |
+| BOOKSING_WORKERS      | `5`                     | :x:                | Amount of parallel workers used for parsing epubs                                                               |
+| GIN_MODE              | `-`                     | :x:                | Set to `release` to make gin (the request router) less verbose and faster                                       |
+| GOOGLE_KEY            | `-`                     | :white_check_mark: | google key (see https://developers.google.com/identity/protocols/oauth2/openid-connect to see how to get these) |
+| GOOGLE_SECRET         | `-`                     | :white_check_mark: | See above                                                                                                       |
+
+
+
 
 ## Usage
 1. Run the booksing binary from the directory with the epub books. You can access the web interface at [http://localhost:7132](http://localhost:7132) 
-1. Press refresh to search for books
-1. Configure your smtp server, username and password. When using gmail / g suite, smtp server is smtp.gmail.com, username is your e-mail address and your regular account password (if you have 2FA enabled, please generate an application specific password) 
-1. If you have a kindle, check the convert to mobi checkbox and enter your kindles email address (can be found on your amazon "devices" page) 
-1. Optionally, edit the amount of results per page. The server has no real problem serving > 500 results per query, but the (mobile) browser usually has.
-1. Press save when done.
-
-## Security
-While initially this was intended to be behind a secure proxy, some need has arisen for some form of user management.  
-To enable security, please set the `TOKEN_REQUIRED` environment variable to `true`.  
-To generate tokens, visit `localhost:7132/adduser?username=foo`, this only works on localhost (or 127.0.0.1). The token generated can be pasted in the token field in the configuration dialog.
-
-You can use the following env vars to configure booksing:
-
-````
-  BOOK_DIR string
-        The directory to get books from. This directory must exist. (default ".")
-  ALLOW_DELETES bool
-        Setting this to true makes booksing delete duplicates and unparsable (for booksing, your eReader may be more lenient) epubs from the filesystem *USE WITH CAUTION*
-  DATABASE_LOCATION string
-        Determines where to store the database (default: $BOOK_DIR/booksing.db)
-  TOKEN_REQUIRED string
-        Determines whether searching and download books requires an access token, set it to true to enable, any other value, or absence will disable security
-````

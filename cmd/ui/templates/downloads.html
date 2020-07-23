@@ -1,0 +1,37 @@
+{{define "downloads.html"}}
+{{template "base.html"}}
+
+<body>
+    {{template "nav.html" .}}
+
+    <div class="container">
+        <table class="table table-responsive align-middle table-striped">
+            <thead>
+                <tr>
+                    <th scope="col">User</th>
+                    <th scope="col">Book</th>
+                    <th scope="col">Timestamp</th>
+                    <th scope="col">IP</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Downloads}}
+                <tr>
+                    <td>{{.User}}</td>
+                    <td>{{.Book}}</td>
+                    <td>
+                        <a href="#" data-toggle="tooltip"
+                            title="{{.Timestamp | prettyTime}}">{{.Timestamp | relativeTime}}</a>
+                    </td>
+                    <td>{{.IP}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+
+    </div>
+</body>
+
+
+{{template "footer.html"}}
+{{end}}

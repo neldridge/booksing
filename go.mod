@@ -1,25 +1,34 @@
 module github.com/gnur/booksing
 
 require (
-	cloud.google.com/go v0.43.0
-	github.com/DataDog/zstd v1.4.1 // indirect
-	github.com/Sereal/Sereal v0.0.0-20190618215532-0b8ac451a863 // indirect
-	github.com/antzucaro/matchr v0.0.0-20180616170659-cbc221335f3c
+	cloud.google.com/go v0.61.0 // indirect
+	github.com/DataDog/zstd v1.4.5 // indirect
+	github.com/Sereal/Sereal v0.0.0-20200721151727-6b7159e8e352 // indirect
 	github.com/asdine/storm v2.1.2+incompatible
 	github.com/beevik/etree v1.1.0
-	github.com/elazarl/go-bindata-assetfs v0.0.0-20180223160309-38087fe4dafb
-	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
-	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
-	github.com/kelseyhightower/envconfig v1.3.0
+	github.com/gin-contrib/sessions v0.0.3
+	github.com/gin-gonic/gin v1.6.3
+	github.com/go-playground/validator/v10 v10.3.0 // indirect
+	github.com/gobuffalo/here v0.6.2 // indirect
+	github.com/golang/snappy v0.0.1 // indirect
+	github.com/gorilla/mux v1.7.4 // indirect
+	github.com/gorilla/sessions v1.2.0 // indirect
+	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/kennygrant/sanitize v1.2.4
-	github.com/konsorten/go-windows-terminal-sequences v1.0.1 // indirect
-	github.com/kr/pretty v0.1.0 // indirect
-	github.com/mattn/go-zglob v0.0.1
-	github.com/sirupsen/logrus v1.1.1
+	github.com/markbates/goth v1.64.2
+	github.com/markbates/pkger v0.17.0
+	github.com/mattn/go-zglob v0.0.3
+	github.com/meilisearch/meilisearch-go v0.11.1
+	github.com/prometheus/client_golang v1.7.1
+	github.com/sirupsen/logrus v1.6.0
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
-	go.etcd.io/bbolt v1.3.2 // indirect
-	golang.org/x/text v0.3.2
-	golang.org/x/tools v0.0.0-20190628153133-6cdbf07be9d0
-	google.golang.org/api v0.7.0
-	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
+	go.etcd.io/bbolt v1.3.5 // indirect
+	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899
+	golang.org/x/sys v0.0.0-20200722175500-76b94024e4b6 // indirect
+	golang.org/x/text v0.3.3
+	golang.org/x/tools v0.0.0-20200723000907-a7c6fd066f6d
+	gopkg.in/yaml.v2 v2.3.0 // indirect
 )
+
+go 1.14

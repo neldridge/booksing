@@ -1,4 +1,4 @@
-package main
+package booksing
 
 import (
 	"fmt"
@@ -18,42 +18,51 @@ var yearRemove = regexp.MustCompile(`\((1|2)[0-9]{3}\)`)
 var drukRemove = regexp.MustCompile(`(?i)/ druk [0-9]+`)
 var filenameSafe = regexp.MustCompile("[^a-zA-Z0-9 -]+")
 
+type StorageLocation string
+
+const (
+	FileStorage StorageLocation = "FILE"
+)
+
 // Book represents a book record in the database, regular "book" data with extra metadata
 type Book struct {
-	ID            int       `json:"stormid" storm:"id,increment"`
-	Hash          string    `json:"hash" storm:"index"`
-	Title         string    `json:"title" storm:"index"`
-	Author        string    `json:"author" storm:"index"`
-	Language      string    `json:"language" storm:"index"`
-	Description   string    `json:"description"`
-	Filepath      string    `json:"filepath" storm:"index"`
-	Filename      string    `json:"filename" storm:"index"`
-	HasMobi       bool      `json:"hasmobi"`
-	MetaphoneKeys []string  `bson:"metaphone_keys"`
-	SearchWords   []string  `bson:"search_keys"`
-	Added         time.Time `bson:"date_added" json:"date_added" storm:"index"`
+	Hash        string
+	Title       string
+	Author      string
+	Language    string
+	Description string
+	Added       time.Time
+	Path        string
 }
 
-func (b *Book) HasSearchWords(terms []string) bool {
-	for _, term := range terms {
-		if !contains(b.SearchWords, term) {
-			return false
-		}
-	}
-	return true
+type BookInput struct {
+	Title       string
+	Author      string
+	Language    string
+	Description string
+	Path        string
 }
 
-func (b *Book) HasMetaphoneKeys(terms []string) bool {
-	for _, term := range terms {
-		if !contains(b.MetaphoneKeys, term) {
-			return false
-		}
-	}
-	return true
+func (b *BookInput) ToBook() Book {
+	var book Book
+	book.Author = Fix(b.Author, true, true)
+	book.Title = Fix(b.Title, true, false)
+	book.Language = FixLang(b.Language)
+	book.Description = b.Description
+	book.Path = b.Path
+
+	book.Hash = HashBook(book.Author, book.Title)
+
+	return book
+
+}
+
+type FileLocation struct {
+	Path string
 }
 
 // NewBookFromFile creates a book object from a file
-func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, err error) {
+func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
 	epub, err := epub.ParseFile(bookpath)
 	if err != nil {
 		return nil, err
@@ -71,12 +80,7 @@ func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, er
 		return nil, err
 	}
 
-	mobiPath := strings.Replace(bookpath, "epub", "mobi", -1)
-	_, err = os.Stat(mobiPath)
-	book.HasMobi = !os.IsNotExist(err)
-
-	book.Filename = filepath.Base(bookpath)
-	book.Filepath = bookpath
+	fp := bookpath
 
 	fi, err := f.Stat()
 	if err != nil {
@@ -85,36 +89,26 @@ func NewBookFromFile(bookpath string, rename bool, baseDir string) (bk *Book, er
 	}
 	book.Added = fi.ModTime()
 
-	book.Title = fix(book.Title, true, false)
-	book.Author = fix(book.Author, true, true)
-	book.Language = fixLang(book.Language)
+	book.Title = Fix(book.Title, true, false)
+	book.Author = Fix(book.Author, true, true)
+	book.Language = FixLang(book.Language)
 	book.Description = sanitize.HTML(book.Description)
 
-	searchWords := book.Title + " " + book.Author
-	book.MetaphoneKeys = getMetaphoneKeys(searchWords)
-	book.SearchWords = getLowercasedSlice(searchWords)
+	book.Hash = HashBook(book.Author, book.Title)
 
-	book.Hash = hashBook(book.Author, book.Title)
-
-	if rename {
-		newBookPath := path.Join(baseDir, getOrganizedBookPath(&book))
-		if bookpath != newBookPath {
-			baseDir := filepath.Dir(newBookPath)
-			err := os.MkdirAll(baseDir, 0755)
-			if err == nil {
-				os.Rename(bookpath, newBookPath)
-				book.Filepath = newBookPath
-				book.Filename = filepath.Base(newBookPath)
-			}
-		}
+	newBookPath := path.Join(baseDir, GetBookPath(book.Title, book.Author)+".epub")
+	baseDir = filepath.Dir(newBookPath)
+	err = os.MkdirAll(baseDir, 0755)
+	if err == nil {
+		os.Rename(bookpath, newBookPath)
+		fp = newBookPath
 	}
+	book.Path = fp
 
 	return &book, nil
 }
 
-func getOrganizedBookPath(b *Book) string {
-	title := b.Title
-	author := b.Author
+func GetBookPath(title, author string) string {
 	author = filenameSafe.ReplaceAllString(author, "")
 	title = filenameSafe.ReplaceAllString(title, "")
 	if len(title) > 35 {
@@ -130,14 +124,14 @@ func getOrganizedBookPath(b *Book) string {
 	}
 	parts := strings.Split(author, " ")
 	firstChar := parts[len(parts)-1][0:1]
-	formatted := fmt.Sprintf("%s/%s/%s-%s.epub", firstChar, author, author, title)
+	formatted := fmt.Sprintf("%s/%s/%s-%s", firstChar, author, author, title)
 	formatted = strings.Replace(formatted, " ", "_", -1)
 	formatted = strings.Replace(formatted, "__", "_", -1)
 
 	return formatted
 }
 
-func fixLang(s string) string {
+func FixLang(s string) string {
 	s = strings.ToLower(s)
 
 	switch s {
@@ -197,7 +191,7 @@ func fixLang(s string) string {
 	return s
 }
 
-func fix(s string, capitalize, correctOrder bool) string {
+func Fix(s string, capitalize, correctOrder bool) string {
 	if s == "" {
 		return "Unknown"
 	}
@@ -229,13 +223,4 @@ func fix(s string, capitalize, correctOrder bool) string {
 		}
 		return in
 	}, s)
-}
-
-func contains(haystack []string, needle string) bool {
-	for _, s := range haystack {
-		if s == needle {
-			return true
-		}
-	}
-	return false
 }
