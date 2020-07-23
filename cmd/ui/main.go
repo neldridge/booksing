@@ -22,10 +22,13 @@ import (
 	"github.com/markbates/goth/providers/google"
 	"github.com/markbates/pkger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"golang.org/x/crypto/argon2"
 
 	"github.com/kelseyhightower/envconfig"
 	log "github.com/sirupsen/logrus"
 )
+
+var salt = []byte("kcqbBu5yrpEaZFpGVdR6z4ke2Sr7UtgxhFCxMtEeSECy6zuYDXkV9jfU")
 
 // V is the holder struct for all possible template values
 type V struct {
@@ -47,14 +50,13 @@ type V struct {
 
 type configuration struct {
 	FQDN      string `default:"http://localhost:7132"`
-	AdminUser string `default:""`
+	AdminUser string `required:"true"`
 	BookDir   string `default:"."`
 	ImportDir string `default:"./import"`
 	FailDir   string `default:"./failed"`
 	Database  string `default:"file://booksing.db"`
-	Secure    bool   `default:"true"`
 	Meili     struct {
-		Host  string
+		Host  string `default:"http://localhost:7700"`
 		Index string `default:"books"`
 		Key   string `required:"true"`
 	}
@@ -64,6 +66,7 @@ type configuration struct {
 	BatchSize    int    `default:"50"`
 	Workers      int    `default:"5"`
 	SaveInterval string `default:"10s"`
+	Secret       []byte `required:"true"`
 }
 
 func main() {
@@ -168,11 +171,12 @@ func main() {
 	}
 
 	r := gin.New()
-	store := cookie.NewStore([]byte("secret"))
+	key := argon2.IDKey(app.cfg.Secret, salt, 4, 4*1024, 2, 32)
+	store := cookie.NewStore(key)
 	store.Options(sessions.Options{
 		MaxAge:   60 * 60 * 24 * 30, //~30 days
 		HttpOnly: true,
-		Secure:   app.cfg.Secure,
+		Secure:   strings.HasPrefix(app.cfg.FQDN, "https"),
 		SameSite: http.SameSiteLaxMode,
 		Path:     "/",
 	})
