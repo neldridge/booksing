@@ -1,4 +1,5 @@
 # booksing
+<img src="./gopher.png" width="350" alt="nerdy gopher">
 A tool to browse epubs.
 
 Heavily inspired by https://github.com/geek1011/BookBrowser/
