@@ -19,3 +19,4 @@ cmd/server/dist
 *creds.json
 
 .env
+pkged.go
