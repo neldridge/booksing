@@ -125,6 +125,8 @@ func (app *booksingApp) refresh() {
 		app.bookQ <- filename
 	}
 
+	//there can be some race conditions, but these will be moved to the failed dir in the worst case scenario
+
 	//we can assume all books have been processed here, lets move all files to failed dir
 	matches, err = zglob.Glob(filepath.Join(app.importDir, "/**/*.*"))
 	if err != nil {
