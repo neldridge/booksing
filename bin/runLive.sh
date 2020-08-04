@@ -29,7 +29,7 @@ until curl --max-time 0.3 --output /dev/null --silent --head http://localhost:77
 done
 
 log "Creating temp workspace in ${workingdir}"
-cp -a testdata/import/gutenberg/* $workingdir/import/
+cp -a testdata/import $workingdir/import/
 
 source .env
 
@@ -46,7 +46,7 @@ export BOOKSING_SAVEINTERVAL="20s"
 export BOOKSING_SECURE="false"
 export GOOGLE_KEY="$GKEY"
 export GOOGLE_SECRET="$GSECRET"
-export SESSION_SECRET="vJbh7i6tMWNN7BNYQ"
+export BOOKSING_SECRET="vJbh7i6tMWNN7BNYQ"
 
 
 air

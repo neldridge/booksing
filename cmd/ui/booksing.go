@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -113,9 +114,7 @@ func (app *booksingApp) refresh() {
 		app.logger.WithField("err", err).Error("glob of all books failed")
 		return
 	}
-	if len(matches) == 0 {
-		return
-	}
+
 	app.logger.WithFields(logrus.Fields{
 		"total":     len(matches),
 		"bookdir":   app.importDir,
@@ -124,6 +123,34 @@ func (app *booksingApp) refresh() {
 
 	for _, filename := range matches {
 		app.bookQ <- filename
+	}
+
+	//we can assume all books have been processed here, lets move all files to failed dir
+	matches, err = zglob.Glob(filepath.Join(app.importDir, "/**/*.*"))
+	if err != nil {
+		app.logger.WithError(err).Error("Failed globbing remaining files")
+		return
+	}
+	for _, file := range matches {
+		if strings.HasSuffix(file, ".epub") {
+			continue
+		}
+		app.logger.WithField("file", file).Info("moving file to failed dir")
+		app.moveBookToFailed(file)
+	}
+
+	//only empty directories remain, let's delete them to make it easier on the filesystem
+	matches, err = zglob.Glob(filepath.Join(app.importDir, "/**"))
+	if err != nil {
+		app.logger.WithError(err).Error("Failed globbing remaining empty dirs")
+		return
+	}
+	for _, dir := range matches {
+		app.logger.WithField("file", dir).Info("deleting")
+		err := os.RemoveAll(dir)
+		if err != nil {
+			app.logger.WithError(err).Error("Could not delete dir")
+		}
 	}
 }
 
