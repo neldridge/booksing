@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"html/template"
 	"net/url"
+	"reflect"
+	"sort"
 	"time"
 )
 
@@ -21,32 +23,106 @@ var templateFunctions = template.FuncMap{
 		}
 		return s
 	},
+	"add": func(b, a interface{}) (interface{}, error) {
+		av := reflect.ValueOf(a)
+		bv := reflect.ValueOf(b)
+
+		switch av.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			switch bv.Kind() {
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				return av.Int() + bv.Int(), nil
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				return av.Int() + int64(bv.Uint()), nil
+			case reflect.Float32, reflect.Float64:
+				return float64(av.Int()) + bv.Float(), nil
+			default:
+				return nil, fmt.Errorf("add: unknown type for %q (%T)", bv, b)
+			}
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			switch bv.Kind() {
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				return int64(av.Uint()) + bv.Int(), nil
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				return av.Uint() + bv.Uint(), nil
+			case reflect.Float32, reflect.Float64:
+				return float64(av.Uint()) + bv.Float(), nil
+			default:
+				return nil, fmt.Errorf("add: unknown type for %q (%T)", bv, b)
+			}
+		case reflect.Float32, reflect.Float64:
+			switch bv.Kind() {
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				return av.Float() + float64(bv.Int()), nil
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				return av.Float() + float64(bv.Uint()), nil
+			case reflect.Float32, reflect.Float64:
+				return av.Float() + bv.Float(), nil
+			default:
+				return nil, fmt.Errorf("add: unknown type for %q (%T)", bv, b)
+			}
+		default:
+			return nil, fmt.Errorf("add: unknown type for %q (%T)", av, a)
+		}
+	},
 	"Iterate": func(offset, limit int64, results int64) [][2]int64 {
 		var i int64
 		var Items [][2]int64
-		if int64(results) == limit {
-			offset += limit
-		}
 		for i = 0; i <= (results / limit); i++ {
 			Items = append(Items, [2]int64{
 				i + 1,
 				i * limit,
 			})
 		}
-		if len(Items) > 8 {
-			l := len(Items)
-			return [][2]int64{
-				Items[0],
-				Items[1],
-				Items[2],
-				{-1, -1},
-				Items[l-3],
-				Items[l-2],
-				Items[l-1],
+
+		itemIndices := []int{0, 1, 2}
+
+		for i, b := range Items {
+			if b[1] == offset {
+				itemIndices = append(itemIndices, i-1, i, i+1)
+				break
 			}
 		}
+		if len(Items) > 8 {
+			l := len(Items)
+			itemIndices = append(itemIndices, l-3, l-2, l-2)
+		}
 
-		return Items
+		properIndices := func(a []int) []int {
+
+			var indices []int
+			seen := make(map[int]bool)
+
+			for _, b := range a {
+				if _, ok := seen[b]; !ok {
+					indices = append(indices, b)
+					seen[b] = true
+				}
+			}
+
+			sort.Ints(indices)
+
+			return indices
+		}(itemIndices)
+
+		var retItems [][2]int64
+
+		var lastPage int64
+		lastPage = 0
+		for _, i := range properIndices {
+			if i < 0 || i >= len(Items) {
+				continue
+			}
+			if lastPage+1 != Items[i][0] {
+				retItems = append(retItems, [2]int64{-1, -1})
+			}
+
+			retItems = append(retItems, Items[i])
+			lastPage = Items[i][0]
+		}
+
+		return retItems
+
 	},
 	"prettyTime": func(s interface{}) template.HTML {
 		t, ok := s.(time.Time)

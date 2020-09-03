@@ -87,7 +87,8 @@
                 </li>
                 {{end}}
                 {{end}}
-                <li class="page-item {{if ne .Limit .Results}}disabled{{end}}">
+                {{$lastOnPage := add .Offset .Limit}}
+                <li class="page-item {{if ge $lastOnPage .Results}}disabled{{end}}">
                     <a class="page-link" href="/?{{page "next" .Q .Offset .Limit}}">next</a>
                 </li>
             </ul>
