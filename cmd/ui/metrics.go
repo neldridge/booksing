@@ -22,4 +22,12 @@ var (
 		Name: "booksing_db_errors",
 		Help: "The number of errors encountered when using the db",
 	}, []string{"type"})
+	statusGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "booksing_indexing",
+		Help: "Wether booksing is indexing or not",
+	})
+	totalBooksGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "booksing_books_in_index",
+		Help: "Total number of books available for searching",
+	})
 )

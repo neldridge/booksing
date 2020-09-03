@@ -21,13 +21,13 @@ var templateFunctions = template.FuncMap{
 		}
 		return s
 	},
-	"Iterate": func(offset, limit int64, results int) [][2]int64 {
+	"Iterate": func(offset, limit int64, results int64) [][2]int64 {
 		var i int64
 		var Items [][2]int64
 		if int64(results) == limit {
 			offset += limit
 		}
-		for i = 0; i <= (offset / limit); i++ {
+		for i = 0; i <= (results / limit); i++ {
 			Items = append(Items, [2]int64{
 				i + 1,
 				i * limit,

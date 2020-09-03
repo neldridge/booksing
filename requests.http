@@ -54,7 +54,7 @@ content-type: application/json
 ###
 
 # @name stats
-GET {{host}}/indexes/test/stats
+GET {{host}}/indexes/books/stats
 X-Meili-API-Key: {{key}}
 
 ###
@@ -80,4 +80,10 @@ X-Meili-API-Key: {{key}}
 
 # @name search
 GET {{host}}/indexes/test/search?q=test
+X-Meili-API-Key: {{key}}
+
+###
+
+# @name updates
+GET {{host}}/indexes/books/updates
 X-Meili-API-Key: {{key}}

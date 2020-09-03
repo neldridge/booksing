@@ -106,9 +106,11 @@ func (app *booksingApp) refresh() {
 	defer atomic.StoreUint32(&locker, stateUnlocked)
 	defer func() {
 		app.state = "idle"
+		statusGauge.Set(0)
 	}()
 
 	app.state = "indexing"
+	statusGauge.Set(1)
 	matches, err := zglob.Glob(filepath.Join(app.importDir, "/**/*.epub"))
 	if err != nil {
 		app.logger.WithField("err", err).Error("glob of all books failed")
@@ -154,6 +156,7 @@ func (app *booksingApp) refresh() {
 			app.logger.WithError(err).Error("Could not delete dir")
 		}
 	}
+
 }
 
 func (app *booksingApp) resultParser() {
@@ -207,6 +210,8 @@ func (app *booksingApp) resultParser() {
 				}
 			}
 		}
+		currentTotal := app.db.GetBookCount()
+		totalBooksGauge.Set(float64(currentTotal))
 	}
 }
 
@@ -347,7 +352,7 @@ func (app *booksingApp) meiliUpdater() {
 				continue
 			}
 			start := time.Now()
-			err := app.s.AddBooks(books, true)
+			err := app.s.AddBooks(books, false)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
 					"err": err,

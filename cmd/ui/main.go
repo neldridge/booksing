@@ -32,7 +32,7 @@ var salt = []byte("kcqbBu5yrpEaZFpGVdR6z4ke2Sr7UtgxhFCxMtEeSECy6zuYDXkV9jfU")
 
 // V is the holder struct for all possible template values
 type V struct {
-	Results    int
+	Results    int64
 	Error      error
 	Books      []booksing.Book
 	Book       *booksing.Book

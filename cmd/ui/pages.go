@@ -53,9 +53,9 @@ func (app *booksingApp) search(c *gin.Context) {
 	c.HTML(200, "search.html", V{
 		Limit:      limit,
 		Offset:     offset,
-		Results:    len(books),
+		Results:    books.Total,
 		TimeTaken:  latency,
-		Books:      books,
+		Books:      books.Items,
 		Error:      err,
 		Q:          q,
 		IsAdmin:    c.GetBool("isAdmin"),
@@ -236,7 +236,7 @@ func (app *booksingApp) bookmarks(c *gin.Context) {
 	stop := time.Since(start)
 	latency := int(math.Ceil(float64(stop.Nanoseconds()) / 1000000.0))
 	c.HTML(200, "bookmarks.html", V{
-		Results:    len(books),
+		Results:    int64(len(books)),
 		TimeTaken:  latency,
 		Books:      books,
 		Q:          "",

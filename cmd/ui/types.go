@@ -61,7 +61,7 @@ type search interface {
 
 	GetBook(string) (*booksing.Book, error)
 	DeleteBook(string) error
-	GetBooks(string, int64, int64) ([]booksing.Book, error)
+	GetBooks(string, int64, int64) (*booksing.SearchResult, error)
 
 	GetBookByHash(string) (*booksing.Book, error)
 }

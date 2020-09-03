@@ -51,3 +51,8 @@ type BookCount struct {
 	Date  time.Time
 	Count int
 }
+
+type SearchResult struct {
+	Items []Book
+	Total int64
+}

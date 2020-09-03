@@ -46,7 +46,7 @@ func (s *Meili) AddBooks(books []booksing.Book, sync bool) error {
 		}
 	}
 
-	id, err := s.client.Documents(s.index).AddOrUpdate(uniquebooks)
+	id, err := s.client.Documents(s.index).AddOrReplace(uniquebooks)
 	if err != nil {
 		return fmt.Errorf("Unable to insert books: %w", err)
 	}
@@ -60,7 +60,7 @@ func (s *Meili) AddBooks(books []booksing.Book, sync bool) error {
 			if err != nil {
 				return fmt.Errorf("Unable to get update status for updateID %v books: %w", id.UpdateID, err)
 			}
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(50 * time.Millisecond)
 		}
 	}
 	return nil
@@ -77,14 +77,16 @@ func (s *Meili) DeleteBook(hash string) error {
 	return err
 }
 
-func (s *Meili) GetBooks(q string, limit, offset int64) ([]booksing.Book, error) {
+func (s *Meili) GetBooks(q string, limit, offset int64) (*booksing.SearchResult, error) {
 
 	var books []booksing.Book
 	var hits []interface{}
+	var totalHits int64
 
 	if q == "" {
 		for tDiff := 0 * time.Hour; tDiff < 720*time.Hour; tDiff += 24 * time.Hour {
 			q := time.Now().Add(-1 * tDiff).Format("2006-01-02")
+			var res *meilisearch.SearchResponse
 			res, err := s.client.Search(s.index).Search(meilisearch.SearchRequest{
 				Query:  q,
 				Limit:  limit,
@@ -97,6 +99,7 @@ func (s *Meili) GetBooks(q string, limit, offset int64) ([]booksing.Book, error)
 				hits = res.Hits
 				break
 			}
+			totalHits = res.NbHits
 		}
 	} else {
 
@@ -109,6 +112,7 @@ func (s *Meili) GetBooks(q string, limit, offset int64) ([]booksing.Book, error)
 			return nil, fmt.Errorf("Unable to get results from meili: %w", err)
 		}
 		hits = res.Hits
+		totalHits = res.NbHits
 	}
 
 	for _, hit := range hits {
@@ -126,7 +130,10 @@ func (s *Meili) GetBooks(q string, limit, offset int64) ([]booksing.Book, error)
 		books = append(books, b)
 	}
 
-	return books, nil
+	return &booksing.SearchResult{
+		Items: books,
+		Total: totalHits,
+	}, nil
 }
 
 func (s *Meili) GetBookByHash(hash string) (*booksing.Book, error) {
