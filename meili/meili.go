@@ -97,9 +97,9 @@ func (s *Meili) GetBooks(q string, limit, offset int64) (*booksing.SearchResult,
 			}
 			if len(res.Hits) > 0 {
 				hits = res.Hits
+				totalHits = int64(len(res.Hits))
 				break
 			}
-			totalHits = res.NbHits
 		}
 	} else {
 
