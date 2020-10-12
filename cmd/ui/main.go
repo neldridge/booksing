@@ -63,6 +63,10 @@ type configuration struct {
 	LogLevel     string `default:"info"`
 	BindAddress  string `default:"localhost:7132"`
 	Timezone     string `default:"Europe/Amsterdam"`
+	MQTTEnabled  bool   `default:"false"`
+	MQTTTopic    string `default:"events"`
+	MQTTHost     string `default:"tcp://localhost:1883"`
+	MQTTClientID string `default:"booksing"`
 	BatchSize    int    `default:"50"`
 	Workers      int    `default:"5"`
 	SaveInterval string `default:"10s"`
@@ -159,6 +163,15 @@ func main() {
 		meiliQ:       make(chan booksing.Book),
 		saveInterval: interval,
 		sessionMap:   sync.Map{},
+	}
+
+	if app.cfg.MQTTEnabled {
+		mqttClient, err := newMQTTClient(cfg.MQTTHost, cfg.MQTTClientID)
+		if err != nil {
+			log.WithField("err", err).Fatal("Unable to connect to mqtt")
+			return
+		}
+		app.mqttClient = mqttClient
 	}
 
 	if cfg.ImportDir != "" {

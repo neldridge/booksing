@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gnur/booksing"
 	"github.com/sirupsen/logrus"
 )
@@ -11,6 +12,7 @@ import (
 type booksingApp struct {
 	s            search
 	db           database
+	mqttClient   mqtt.Client
 	bookDir      string
 	importDir    string
 	logger       *logrus.Entry

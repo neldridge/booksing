@@ -11,7 +11,7 @@ function log {
 
 function cleanup {
     log "Stopping meili container"
-    docker stop meili
+    sudo docker stop meili
     log "Removing old workdir"
     rm -rf workingdir
     log "Done. ✅"
@@ -20,10 +20,10 @@ function cleanup {
 trap 'cleanup' EXIT
 
 log "Starting meilisearch in docker"
-docker run --name meili -d  --rm -p 7700:7700 getmeili/meilisearch:latest ./meilisearch --master-key=masterKey
+sudo docker run --name meili -d  --rm -p 7701:7700 getmeili/meilisearch:latest ./meilisearch --master-key=masterKey
 
 log "Waiting for meili availability"
-until curl --max-time 0.3 --output /dev/null --silent --head http://localhost:7700; do
+until curl --max-time 0.3 --output /dev/null --silent --head http://localhost:7701; do
     printf '.'
     sleep 0.1
 done
@@ -39,7 +39,7 @@ export BOOKSING_DATABASE="file://${workingdir}/booksing.db"
 export BOOKSING_IMPORTDIR="${workingdir}/import"
 export BOOKSING_FAILDIR="${workingdir}/failed"
 export BOOKSING_BOOKDIR="${workingdir}/"
-export BOOKSING_MEILI_HOST="http://localhost:7700"
+export BOOKSING_MEILI_HOST="http://localhost:7701"
 export BOOKSING_MEILI_INDEX="books"
 export BOOKSING_MEILI_KEY="masterKey"
 export BOOKSING_SAVEINTERVAL="20s"
@@ -47,6 +47,10 @@ export BOOKSING_SECURE="false"
 export GOOGLE_KEY="$GKEY"
 export GOOGLE_SECRET="$GSECRET"
 export BOOKSING_SECRET="vJbh7i6tMWNN7BNYQ"
+export BOOKSING_MQTTENABLED=true
+export BOOKSING_MQTTHOST="tcp://sanny.egdk.nl:1883"
+export BOOKSING_MQTTTOPIC="events"
+export BOOKSING_MQTTCLIENTID="booksing"
 
 
 air
