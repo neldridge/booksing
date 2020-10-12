@@ -6,10 +6,13 @@ require (
 	github.com/Sereal/Sereal v0.0.0-20200820125258-a016b7cda3f3 // indirect
 	github.com/asdine/storm v2.1.2+incompatible
 	github.com/beevik/etree v1.1.0
+	github.com/cloudevents/sdk-go/v2 v2.3.1
+	github.com/eclipse/paho.mqtt.golang v1.2.0
 	github.com/gin-contrib/sessions v0.0.3
 	github.com/gin-gonic/gin v1.6.3
 	github.com/go-playground/validator/v10 v10.4.0 // indirect
 	github.com/gobuffalo/here v0.6.2 // indirect
+	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/golang/snappy v0.0.2 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/sessions v1.2.1 // indirect
@@ -29,7 +32,6 @@ require (
 	golang.org/x/sys v0.0.0-20201009025420-dfb3f7c4e634 // indirect
 	golang.org/x/text v0.3.3
 	golang.org/x/tools v0.0.0-20201011145850-ed2f50202694
-	gopkg.in/yaml.v2 v2.3.0 // indirect
 )
 
 go 1.15

@@ -58,6 +58,21 @@ func (app *booksingApp) downloadBook(c *gin.Context) {
 		app.logger.WithField("err", err).Error("could not store download")
 	}
 
+	if app.cfg.MQTTEnabled {
+		e, err := newEvent("booksing", "xyz.dekeijzer.booksing.download", map[string]string{
+			"user": username,
+			"ip":   ip,
+			"book": book.Hash,
+		})
+		if err != nil {
+			app.logger.WithField("err", err).Error("could not create dl event")
+		}
+		err = app.pushEvent(e)
+		if err != nil {
+			app.logger.WithField("err", err).Error("could not push dl event")
+		}
+	}
+
 	fName := path.Base(book.Path)
 	c.Header("Content-Disposition",
 		fmt.Sprintf("attachment; filename=\"%s\"", fName))
