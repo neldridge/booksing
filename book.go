@@ -26,12 +26,12 @@ const (
 
 // Book represents a book record in the database, regular "book" data with extra metadata
 type Book struct {
-	Hash        string
+	Hash        string `storm:"id"`
 	Title       string
 	Author      string
 	Language    string
 	Description string
-	Added       time.Time
+	Added       time.Time `storm:"index"`
 	Path        string
 }
 

@@ -10,11 +10,12 @@ log "binpacking static assets"
 pkger
 
 log "Building binary"
-GOOS=linux GOARCH=arm GOARM=5 go build -o booksing ./cmd/ui
+GOOS=linux GOARCH=amd64 go build -o booksing ./cmd/ui
 
 
 log "copying to sanny"
 scp booksing pit:/tmp/
+mv booksing /tmp/booksing
 
 log "Sending restart trigger"
 curl https://booksing.erwin.land/kill

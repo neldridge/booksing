@@ -39,7 +39,7 @@ func (app *booksingApp) search(c *gin.Context) {
 		}
 	}
 
-	books, err := app.s.GetBooks(q, limit, offset)
+	books, err := app.db.GetBooks(q, limit, offset)
 	if err != nil {
 		c.HTML(500, "error.html", V{
 			Error: err,
@@ -113,7 +113,7 @@ func (app *booksingApp) showUsers(c *gin.Context) {
 func (app *booksingApp) deleteBook(c *gin.Context) {
 	hash := c.Param("hash")
 
-	book, err := app.s.GetBookByHash(hash)
+	book, err := app.db.GetBook(hash)
 	if err != nil {
 		c.HTML(404, "error.html", V{
 			Error: errors.New("Book not found"),
@@ -134,7 +134,7 @@ func (app *booksingApp) deleteBook(c *gin.Context) {
 		return
 	}
 
-	err = app.s.DeleteBook(hash)
+	err = app.db.DeleteBook(hash)
 	if err != nil {
 		app.logger.WithFields(logrus.Fields{
 			"hash": hash,
@@ -226,7 +226,7 @@ func (app *booksingApp) bookmarks(c *gin.Context) {
 	start := time.Now()
 
 	for hash := range user.Bookmarks {
-		b, err := app.s.GetBook(hash)
+		b, err := app.db.GetBook(hash)
 		if err != nil {
 			continue
 		}

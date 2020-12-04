@@ -5,7 +5,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing"
 	"github.com/sirupsen/logrus"
@@ -58,23 +57,9 @@ func Logger(log *logrus.Entry) gin.HandlerFunc {
 
 func (app *booksingApp) BearerTokenMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		sess := sessions.Default(c)
-		u := sess.Get("username")
-		if u == nil {
-			app.logger.Warning("Could not get username from session")
-			c.Redirect(302, "/login")
-			c.Abort()
-			return
-		}
-
-		username, ok := u.(string)
-		if !ok {
-			app.logger.Error("could not get username from session")
-			c.JSON(500, gin.H{
-				"msg": "internal server error",
-			})
-			c.Abort()
-			return
+		username := c.GetHeader(app.cfg.UserHeader)
+		if username == "" {
+			username = "unknown"
 		}
 
 		user, err := app.db.GetUser(username)
@@ -82,7 +67,7 @@ func (app *booksingApp) BearerTokenMiddleware() gin.HandlerFunc {
 			err = app.db.SaveUser(&booksing.User{
 				Name:      username,
 				IsAdmin:   username == app.adminUser,
-				IsAllowed: username == app.adminUser,
+				IsAllowed: username == app.adminUser || app.cfg.AllowAllusers,
 				Created:   time.Now(),
 				LastSeen:  time.Now(),
 				Bookmarks: make(map[string]booksing.Bookmark),

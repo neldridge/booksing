@@ -2,22 +2,40 @@ package storm
 
 import (
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/asdine/storm"
+	"github.com/blevesearch/bleve"
 	"github.com/gnur/booksing"
 	log "github.com/sirupsen/logrus"
 )
 
 type stormDB struct {
 	db *storm.DB
+	in bleve.Index
 }
 
 type download = booksing.Download
 type RefreshResult = booksing.RefreshResult
 
 func New(path string) (*stormDB, error) {
-	db, err := storm.Open(path)
+
+	stormPath := filepath.Join(path, "booksing.db")
+	blevePath := filepath.Join(path, "search.bleve")
+
+	bleveIndex, err := bleve.Open(blevePath)
+	if err == bleve.ErrorIndexPathDoesNotExist {
+		bleveIndex, err = bleve.New(blevePath, bleve.NewIndexMapping())
+		if err != nil {
+			return nil, err
+		}
+	} else if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+
+	db, err := storm.Open(stormPath)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err":  err,
@@ -27,6 +45,7 @@ func New(path string) (*stormDB, error) {
 
 	database := stormDB{
 		db: db,
+		in: bleveIndex,
 	}
 
 	return &database, nil
@@ -140,4 +159,85 @@ func (db *stormDB) HasHash(h string) (bool, error) {
 type dbBookCount struct {
 	ID    string `storm:"unique,index"`
 	Count int
+}
+
+func (db *stormDB) AddBook(b booksing.Book) error {
+	err := db.in.Index(b.Hash, b)
+	if err != nil {
+		return err
+	}
+	return db.db.Save(&b)
+}
+
+func (db *stormDB) GetBook(hash string) (*booksing.Book, error) {
+	var b booksing.Book
+	err := db.db.One("Hash", hash, &b)
+	if err == storm.ErrNotFound {
+		return &b, booksing.ErrNotFound
+	}
+	return &b, err
+}
+
+func (db *stormDB) AddBooks(books []booksing.Book, sync bool) error {
+	var err error
+	var errs []error
+
+	for _, b := range books {
+		err = db.AddBook(b)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if len(errs) > 0 {
+		return errs[0]
+	}
+	return nil
+}
+
+func (db *stormDB) DeleteBook(hash string) error {
+	//todo remove from bleve
+	return db.in.Delete(hash)
+}
+
+func (db *stormDB) GetBooks(q string, limit, offset int64) (*booksing.SearchResult, error) {
+
+	var books []booksing.Book
+
+	if q == "" {
+		return db.recentBooks()
+	}
+
+	//query := bleve.NewQueryStringQuery(q)
+	query := bleve.NewFuzzyQuery(q)
+	searchRequest := bleve.NewSearchRequest(query)
+	searchRequest.From = int(offset)
+	searchRequest.Size = int(limit)
+	res, _ := db.in.Search(searchRequest)
+
+	for _, hit := range res.Hits {
+		b, err := db.GetBook(hit.ID)
+		if err != nil {
+			fmt.Println("Could not get book")
+		}
+
+		books = append(books, *b)
+	}
+
+	return &booksing.SearchResult{
+		Items: books,
+		Total: int64(res.Total),
+	}, nil
+}
+
+func (db *stormDB) recentBooks() (*booksing.SearchResult, error) {
+
+	var books []booksing.Book
+
+	err := db.db.AllByIndex("Added", &books, storm.Limit(10))
+
+	return &booksing.SearchResult{
+		Items: books,
+		Total: int64(len(books)),
+	}, err
 }

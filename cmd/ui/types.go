@@ -10,7 +10,6 @@ import (
 )
 
 type booksingApp struct {
-	s            search
 	db           database
 	mqttClient   mqtt.Client
 	bookDir      string
@@ -56,14 +55,9 @@ type database interface {
 	HasHash(string) (bool, error)
 
 	Close()
-}
 
-type search interface {
 	AddBooks([]booksing.Book, bool) error
-
 	GetBook(string) (*booksing.Book, error)
 	DeleteBook(string) error
 	GetBooks(string, int64, int64) (*booksing.SearchResult, error)
-
-	GetBookByHash(string) (*booksing.Book, error)
 }

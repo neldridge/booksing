@@ -35,7 +35,7 @@ func (app *booksingApp) downloadBook(c *gin.Context) {
 
 	hash := c.Query("hash")
 
-	book, err := app.s.GetBookByHash(hash)
+	book, err := app.db.GetBook(hash)
 	if err != nil {
 		app.logger.WithFields(logrus.Fields{
 			"err":  err,
@@ -367,7 +367,7 @@ func (app *booksingApp) meiliUpdater() {
 				continue
 			}
 			start := time.Now()
-			err := app.s.AddBooks(books, false)
+			err := app.db.AddBooks(books, false)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
 					"err": err,
@@ -387,7 +387,7 @@ func (app *booksingApp) meiliUpdater() {
 
 			if len(books) >= app.cfg.BatchSize {
 				start := time.Now()
-				err := app.s.AddBooks(books, true)
+				err := app.db.AddBooks(books, true)
 				if err != nil {
 					meiliErrors.Inc()
 					app.logger.WithFields(logrus.Fields{
