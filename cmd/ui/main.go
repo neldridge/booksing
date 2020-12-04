@@ -15,11 +15,7 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing"
-	"github.com/gnur/booksing/meili"
 	"github.com/gnur/booksing/storm"
-	"github.com/markbates/goth"
-	"github.com/markbates/goth/gothic"
-	"github.com/markbates/goth/providers/google"
 	"github.com/markbates/pkger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/crypto/argon2"
@@ -49,28 +45,25 @@ type V struct {
 }
 
 type configuration struct {
-	FQDN      string `default:"http://localhost:7132"`
-	AdminUser string `required:"true"`
-	BookDir   string `default:"."`
-	ImportDir string `default:"./import"`
-	FailDir   string `default:"./failed"`
-	Database  string `default:"file://booksing.db"`
-	Meili     struct {
-		Host  string `default:"http://localhost:7700"`
-		Index string `default:"books"`
-		Key   string `required:"true"`
-	}
-	LogLevel     string `default:"info"`
-	BindAddress  string `default:"localhost:7132"`
-	Timezone     string `default:"Europe/Amsterdam"`
-	MQTTEnabled  bool   `default:"false"`
-	MQTTTopic    string `default:"events"`
-	MQTTHost     string `default:"tcp://localhost:1883"`
-	MQTTClientID string `default:"booksing"`
-	BatchSize    int    `default:"50"`
-	Workers      int    `default:"5"`
-	SaveInterval string `default:"10s"`
-	Secret       []byte `required:"true"`
+	FQDN          string `default:"http://localhost:7132"`
+	AdminUser     string `required:"true"`
+	UserHeader    string `default:""`
+	AllowAllusers bool   `default:"true"`
+	BookDir       string `default:"."`
+	ImportDir     string `default:"./import"`
+	FailDir       string `default:"./failed"`
+	DatabaseDir   string `default:"./db/"`
+	LogLevel      string `default:"info"`
+	BindAddress   string `default:":7132"`
+	Timezone      string `default:"Europe/Amsterdam"`
+	MQTTEnabled   bool   `default:"false"`
+	MQTTTopic     string `default:"events"`
+	MQTTHost      string `default:"tcp://localhost:1883"`
+	MQTTClientID  string `default:"booksing"`
+	BatchSize     int    `default:"50"`
+	Workers       int    `default:"5"`
+	SaveInterval  string `default:"10s"`
+	Secret        []byte `required:"true"`
 }
 
 func main() {
@@ -89,16 +82,12 @@ func main() {
 	}
 
 	var db database
-	if strings.HasPrefix(cfg.Database, "file://") {
-		log.WithField("filedbpath", cfg.Database).Debug("using this file")
-		db, err = storm.New(strings.TrimPrefix(cfg.Database, "file://"))
-		if err != nil {
-			log.WithField("err", err).Fatal("could not create fileDB")
-		}
-		defer db.Close()
-	} else {
-		log.Fatal("invalid database chosen")
+	log.WithField("dbpath", cfg.DatabaseDir).Debug("using this file")
+	db, err = storm.New(cfg.DatabaseDir)
+	if err != nil {
+		log.WithField("err", err).Fatal("could not create fileDB")
 	}
+	defer db.Close()
 
 	interval, err := time.ParseDuration(cfg.SaveInterval)
 	if err != nil {
@@ -110,21 +99,8 @@ func main() {
 		log.WithField("err", err).Fatal("could not load timezone")
 	}
 
-	var s search
-	s, err = meili.New(cfg.Meili.Host, cfg.Meili.Index, cfg.Meili.Key)
-	if err != nil {
-		log.WithField("err", err).Fatal("unable to start meili client")
-	}
-
 	tpl := template.New("")
 	tpl.Funcs(templateFunctions)
-
-	goth.UseProviders(
-		google.New(os.Getenv("GOOGLE_KEY"), os.Getenv("GOOGLE_SECRET"), cfg.FQDN+"/auth/google/callback"),
-	)
-	gothic.GetProviderName = func(req *http.Request) (string, error) {
-		return "google", nil
-	}
 
 	err = pkger.Walk("/cmd/ui/templates", func(path string, info os.FileInfo, err error) error {
 		if strings.HasSuffix(path, ".html") {
@@ -151,7 +127,6 @@ func main() {
 
 	app := booksingApp{
 		db:           db,
-		s:            s,
 		bookDir:      cfg.BookDir,
 		importDir:    cfg.ImportDir,
 		timezone:     tz,
@@ -280,33 +255,6 @@ func main() {
 		c.JSON(200, gin.H{
 			"status": app.state,
 		})
-	})
-
-	r.GET("/auth/google", func(c *gin.Context) {
-		if _, err := gothic.CompleteUserAuth(c.Writer, c.Request); err == nil {
-			c.Redirect(302, "/")
-			return
-		}
-		gothic.BeginAuthHandler(c.Writer, c.Request)
-	})
-	r.GET("/auth/google/callback", func(c *gin.Context) {
-		u, err := gothic.CompleteUserAuth(c.Writer, c.Request)
-		if err != nil {
-			c.HTML(200, "error.html", V{
-				Error: err,
-			})
-			return
-		}
-		sess := sessions.Default(c)
-		sess.Set("username", u.Email)
-		err = sess.Save()
-		app.logger.WithField("username", u.Email).Info("Storing username in session")
-		if err != nil {
-			app.logger.WithField("err", err).Error("Could not save session")
-			c.AbortWithStatus(http.StatusForbidden)
-			return
-		}
-		c.Redirect(302, "/")
 	})
 
 	auth := r.Group("/")
