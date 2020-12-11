@@ -48,7 +48,7 @@ type AddBooksResult struct {
 }
 
 type BookCount struct {
-	Date  time.Time
+	Date  string
 	Count int
 }
 

@@ -4,27 +4,20 @@ import (
 	"fmt"
 	"html/template"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing"
 	"github.com/gnur/booksing/storm"
 	"github.com/markbates/pkger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"golang.org/x/crypto/argon2"
 
 	"github.com/kelseyhightower/envconfig"
 	log "github.com/sirupsen/logrus"
 )
-
-var salt = []byte("kcqbBu5yrpEaZFpGVdR6z4ke2Sr7UtgxhFCxMtEeSECy6zuYDXkV9jfU")
 
 // V is the holder struct for all possible template values
 type V struct {
@@ -36,6 +29,7 @@ type V struct {
 	Downloads  []booksing.Download
 	Q          string
 	TimeTaken  int
+	Stats      []booksing.BookCount
 	IsAdmin    bool
 	Username   string
 	TotalBooks int
@@ -45,7 +39,6 @@ type V struct {
 }
 
 type configuration struct {
-	FQDN          string `default:"http://localhost:7132"`
 	AdminUser     string `required:"true"`
 	UserHeader    string `default:""`
 	AllowAllusers bool   `default:"true"`
@@ -63,7 +56,6 @@ type configuration struct {
 	BatchSize     int    `default:"50"`
 	Workers       int    `default:"5"`
 	SaveInterval  string `default:"10s"`
-	Secret        []byte `required:"true"`
 }
 
 func main() {
@@ -135,9 +127,8 @@ func main() {
 		cfg:          cfg,
 		bookQ:        make(chan string),
 		resultQ:      make(chan parseResult),
-		meiliQ:       make(chan booksing.Book),
+		searchQ:      make(chan booksing.Book),
 		saveInterval: interval,
-		sessionMap:   sync.Map{},
 	}
 
 	if app.cfg.MQTTEnabled {
@@ -155,20 +146,10 @@ func main() {
 			go app.bookParser()
 		}
 		go app.resultParser()
-		go app.meiliUpdater()
+		go app.searchUpdater()
 	}
 
 	r := gin.New()
-	key := argon2.IDKey(app.cfg.Secret, salt, 4, 4*1024, 2, 32)
-	store := cookie.NewStore(key)
-	store.Options(sessions.Options{
-		MaxAge:   60 * 60 * 24 * 30, //~30 days
-		HttpOnly: true,
-		Secure:   strings.HasPrefix(app.cfg.FQDN, "https"),
-		SameSite: http.SameSiteLaxMode,
-		Path:     "/",
-	})
-	r.Use(sessions.Sessions("booksing", store))
 	r.Use(Logger(app.logger), gin.Recovery())
 	r.SetHTMLTemplate(tpl)
 
@@ -178,74 +159,6 @@ func main() {
 	static.StaticFS("/static", pkger.Dir("/cmd/ui/static"))
 
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
-
-	r.GET("/login", func(c *gin.Context) {
-		c.HTML(200, "login.html", nil)
-	})
-
-	qr := r.Group("/qr")
-	{
-		qr.GET("/login", func(c *gin.Context) {
-			c.HTML(200, "qr-auth.html", gin.H{
-				"AuthCode": randID(),
-			})
-		})
-
-		qr.GET("/img/:code", app.generateQR)
-
-		qr.GET("/poll/:code", func(c *gin.Context) {
-			code := c.Param("code")
-			user, ok := app.sessionMap.Load(code)
-			if !ok {
-				if c.Query("method") == "manual" {
-					c.Redirect(http.StatusFound, c.Request.Referer())
-				} else {
-					c.JSON(200, gin.H{
-						"status": "no",
-					})
-				}
-				return
-			}
-			app.sessionMap.Delete("username")
-			sess := sessions.Default(c)
-			sess.Set("username", user)
-			err := sess.Save()
-			if err != nil {
-				app.logger.WithError(err).Error("failed saving session")
-				if c.Query("method") == "manual" {
-					c.Redirect(http.StatusFound, c.Request.Referer())
-				} else {
-					c.JSON(200, gin.H{
-						"status": "no",
-					})
-				}
-				return
-			}
-			if c.Query("method") == "manual" {
-				c.Redirect(http.StatusFound, "/")
-				return
-			}
-			c.JSON(200, gin.H{
-				"status": "yes",
-			})
-		})
-
-		qrAuth := qr.Group("", app.BearerTokenMiddleware())
-		{
-			qrAuth.GET("/authorize/:code", func(c *gin.Context) {
-				code := c.Param("code")
-				c.HTML(200, "qr-approve.html", gin.H{
-					"AuthCode": code,
-				})
-			})
-			qrAuth.GET("/approve/:code", func(c *gin.Context) {
-				code := c.Param("code")
-				sess := sessions.Default(c)
-				app.sessionMap.Store(code, sess.Get("username"))
-				c.Redirect(http.StatusFound, "/")
-			})
-		}
-	}
 
 	r.GET("/kill", func(c *gin.Context) {
 		app.logger.Fatal("Killing so I get restarted anew")
@@ -273,6 +186,7 @@ func main() {
 	admin.Use(gin.Recovery(), app.BearerTokenMiddleware(), app.mustBeAdmin())
 	{
 		admin.GET("/users", app.showUsers)
+		admin.GET("/stats", app.showStats)
 		admin.GET("/downloads", app.showDownloads)
 		admin.POST("/delete/:hash", app.deleteBook)
 		admin.POST("user/:username", app.updateUser)

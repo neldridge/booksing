@@ -100,7 +100,7 @@ func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
 	baseDir = filepath.Dir(newBookPath)
 	err = os.MkdirAll(baseDir, 0755)
 	if err == nil {
-		os.Rename(bookpath, newBookPath)
+		_ = os.Rename(bookpath, newBookPath)
 		fp = newBookPath
 	}
 	book.Path = fp

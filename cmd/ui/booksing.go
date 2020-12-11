@@ -284,8 +284,8 @@ func (app *booksingApp) bookParser() {
 			continue
 		}
 
-		//all books get added to meili, even duplicates
-		app.meiliQ <- *book
+		//all books get added to search, even duplicates
+		app.searchQ <- *book
 
 		if exists {
 			app.resultQ <- DuplicateBook
@@ -348,16 +348,16 @@ func (app *booksingApp) addUser(c *gin.Context) {
 	c.Redirect(302, c.Request.Referer())
 }
 
-func (app *booksingApp) meiliUpdater() {
+func (app *booksingApp) searchUpdater() {
 	lastSave := time.Now()
 	ticker := time.NewTicker(app.saveInterval)
 	var books []booksing.Book
-	meiliProccessed := booksProcessed.WithLabelValues("meili")
-	meiliTime := booksProcessedTime.WithLabelValues("meili")
-	meiliErrors := meiliErrors.WithLabelValues("update")
+	searchProcessed := booksProcessed.WithLabelValues("search")
+	searchTime := booksProcessedTime.WithLabelValues("search")
+	searchErrors := searchErrorsMetric.WithLabelValues("update")
 
 	for {
-		app.logger.WithField("bookstoupdate", len(books)).Debug("meili books ready to update")
+		app.logger.WithField("bookstoupdate", len(books)).Debug("search books ready to update")
 		select {
 		case <-ticker.C:
 			app.logger.Debug("Storing results from ticker")
@@ -371,33 +371,33 @@ func (app *booksingApp) meiliUpdater() {
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
 					"err": err,
-				}).Error("Failed updating meili index")
-				meiliErrors.Inc()
+				}).Error("Failed updating search index")
+				searchErrors.Inc()
 			} else {
 				//only update metrics if it succeeded
 				duration := time.Since(start).Microseconds()
-				meiliProccessed.Add(float64(len(books)))
-				meiliTime.Add(float64(duration) / 1000000)
+				searchProcessed.Add(float64(len(books)))
+				searchTime.Add(float64(duration) / 1000000)
 			}
 
 			books = []booksing.Book{}
 			lastSave = time.Now()
-		case b := <-app.meiliQ:
+		case b := <-app.searchQ:
 			books = append(books, b)
 
 			if len(books) >= app.cfg.BatchSize {
 				start := time.Now()
 				err := app.db.AddBooks(books, true)
 				if err != nil {
-					meiliErrors.Inc()
+					searchErrors.Inc()
 					app.logger.WithFields(logrus.Fields{
 						"err": err,
-					}).Error("Failed updating meili index")
+					}).Error("Failed updating search index")
 				} else {
 					//only update metrics if it succeeded
 					duration := time.Since(start).Microseconds()
-					meiliProccessed.Add(float64(len(books)))
-					meiliTime.Add(float64(duration) / 1000000)
+					searchProcessed.Add(float64(len(books)))
+					searchTime.Add(float64(duration) / 1000000)
 				}
 				books = []booksing.Book{}
 				lastSave = time.Now()

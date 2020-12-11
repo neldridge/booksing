@@ -139,8 +139,26 @@ func (db *stormDB) UpdateBookCount(count int) error {
 }
 
 func (db *stormDB) GetBookCountHistory(start, end time.Time) ([]booksing.BookCount, error) {
-	//TODO implement
-	return nil, nil
+	var stats []dbBookCount
+
+	startStr := start.Format("2006-01-02")
+	endStr := end.Format("2006-01-02")
+
+	err := db.db.Range("ID", startStr, endStr, &stats, storm.Reverse())
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get stats from db: %w", err)
+	}
+
+	var retStats []booksing.BookCount
+	for _, stat := range stats {
+		retStats = append(retStats, booksing.BookCount{
+			Date:  stat.ID,
+			Count: stat.Count,
+		})
+
+	}
+
+	return retStats, nil
 }
 
 func (db *stormDB) AddHash(h string) error {
@@ -214,6 +232,13 @@ func (db *stormDB) GetBooks(q string, limit, offset int64) (*booksing.SearchResu
 	searchRequest.From = int(offset)
 	searchRequest.Size = int(limit)
 	res, _ := db.in.Search(searchRequest)
+	if res.Total == 0 {
+		query := bleve.NewQueryStringQuery(q)
+		searchRequest = bleve.NewSearchRequest(query)
+		searchRequest.From = int(offset)
+		searchRequest.Size = int(limit)
+		res, _ = db.in.Search(searchRequest)
+	}
 
 	for _, hit := range res.Hits {
 		b, err := db.GetBook(hit.ID)
@@ -234,7 +259,7 @@ func (db *stormDB) recentBooks() (*booksing.SearchResult, error) {
 
 	var books []booksing.Book
 
-	err := db.db.AllByIndex("Added", &books, storm.Limit(10))
+	err := db.db.AllByIndex("Added", &books, storm.Limit(20), storm.Reverse())
 
 	return &booksing.SearchResult{
 		Items: books,

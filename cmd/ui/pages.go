@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"math"
@@ -13,7 +12,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing"
 	"github.com/sirupsen/logrus"
-	qrcode "github.com/skip2/go-qrcode"
 )
 
 func (app *booksingApp) search(c *gin.Context) {
@@ -64,30 +62,6 @@ func (app *booksingApp) search(c *gin.Context) {
 	})
 }
 
-func (app *booksingApp) generateQR(c *gin.Context) {
-
-	code := c.Param("code")
-	code = code[:len(code)-4]
-
-	url := fmt.Sprintf("%s/qr/authorize/%s", app.cfg.FQDN, code)
-
-	png, err := qrcode.Encode(url, qrcode.Medium, 256)
-	if err != nil {
-		c.HTML(500, "error.html", V{
-			Error: err,
-			Q:     "",
-		})
-		return
-	}
-
-	reader := bytes.NewReader(png)
-	contentLength := int64(len(png))
-	contentType := "image/png"
-	extraHeaders := map[string]string{"Content-Disposition": `attachment; filename="gopher.png"`}
-
-	c.DataFromReader(http.StatusOK, contentLength, contentType, reader, extraHeaders)
-}
-
 func (app *booksingApp) showUsers(c *gin.Context) {
 
 	users, err := app.db.GetUsers()
@@ -105,6 +79,30 @@ func (app *booksingApp) showUsers(c *gin.Context) {
 		IsAdmin:    c.GetBool("isAdmin"),
 		TotalBooks: app.db.GetBookCount(),
 		Users:      users,
+		Indexing:   app.state == "indexing",
+	})
+
+}
+
+func (app *booksingApp) showStats(c *gin.Context) {
+	start := time.Now().Add(-365 * 24 * time.Hour)
+	end := time.Now()
+
+	stats, err := app.db.GetBookCountHistory(start, end)
+	if err != nil {
+		c.HTML(403, "error.html", V{
+			Error: err,
+		})
+		c.Abort()
+		return
+	}
+
+	c.HTML(200, "stats.html", V{
+		Error:      err,
+		Q:          "",
+		IsAdmin:    c.GetBool("isAdmin"),
+		TotalBooks: app.db.GetBookCount(),
+		Stats:      stats,
 		Indexing:   app.state == "indexing",
 	})
 

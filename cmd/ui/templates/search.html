@@ -69,7 +69,7 @@
             </table>
         </div>
 
-        {{$moreresults := le .Limit .Results}}
+        {{$moreresults := lt .Limit .Results}}
         {{if $moreresults}}
         <nav aria-label="search results navigation">
             <ul class="pagination justify-content-end">

@@ -64,14 +64,15 @@ func (app *booksingApp) BearerTokenMiddleware() gin.HandlerFunc {
 
 		user, err := app.db.GetUser(username)
 		if err == booksing.ErrNotFound {
-			err = app.db.SaveUser(&booksing.User{
+			user = booksing.User{
 				Name:      username,
 				IsAdmin:   username == app.adminUser,
 				IsAllowed: username == app.adminUser || app.cfg.AllowAllusers,
 				Created:   time.Now(),
 				LastSeen:  time.Now(),
 				Bookmarks: make(map[string]booksing.Bookmark),
-			})
+			}
+			err = app.db.SaveUser(&user)
 			if err != nil {
 				app.logger.WithField("err", err).Error("could not save new user")
 				c.JSON(500, gin.H{

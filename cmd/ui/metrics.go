@@ -14,9 +14,9 @@ var (
 		Name: "booksing_books_duration_seconds",
 		Help: "The time taken to process the books in seconds",
 	}, []string{"transaction"})
-	meiliErrors = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "booksing_meili_errors",
-		Help: "The number of errors encountered when contacting meilisearch",
+	searchErrorsMetric = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "booksing_search_errors",
+		Help: "The number of errors encountered when contacting search",
 	}, []string{"type"})
 	dbErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "booksing_db_errors",

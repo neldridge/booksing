@@ -1,7 +1,6 @@
 package main
 
 import (
-	"sync"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -16,15 +15,13 @@ type booksingApp struct {
 	importDir    string
 	logger       *logrus.Entry
 	timezone     *time.Location
-	FQDN         string
 	adminUser    string
 	cfg          configuration
 	state        string
 	bookQ        chan string
 	resultQ      chan parseResult
-	meiliQ       chan booksing.Book
+	searchQ      chan booksing.Book
 	saveInterval time.Duration
-	sessionMap   sync.Map
 }
 
 type parseResult int32
