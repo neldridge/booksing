@@ -43,9 +43,17 @@ Set the following env vars to configure booksing:
 | BOOKSING_TIMEZONE     | `Europe/Amsterdam`     | :x:                | Timezone used for storing all time information                                                                           |
 | BOOKSING_USERHEADER   | `-`                    | :x:                | The header to take the username from (if behind cloudflare access, this should be: `Cf-Access-Authenticated-User-Email`) |
 | BOOKSING_WORKERS      | `5`                    | :x:                | Amount of parallel workers used for parsing epubs                                                                        |
-| GIN_MODE              | `-`                    | :x:                | Set to `release` to make gin (the request router) less verbose and faster                                                |
 
 
 
-## Usage
-1. Run the booksing binary from the directory with the epub books. You can access the web interface at [http://localhost:7132](http://localhost:7132) 
+## Example first run
+
+```
+
+$ mkdir booksing booksing/failed booksing/import booksing/db 
+$ cd booksing
+$ wget 'https://github.com/gnur/booksing/releases/download/v8.0.1/booksing_8.0.1_linux_x86_64.tar.gz'
+$ tar xzf booksing*
+$ ./booksing &
+$ mv ~/library/*.epub import/
+# visit localhost:7132 to see the books in the interface
