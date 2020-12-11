@@ -14,8 +14,9 @@ Download an appropriate release from the [release](https://github.com/gnur/books
 - "Responsive" web interface
 - Automatic deletion of duplicates and unparsable epubs
 - Create bookmarks to track what you want to read, have read and stopped reading
-- Grant access from the admin page
 - See what books have been downloaded
+- If you have an authenticating proxy booksing can determine the username from a header, and the admin user will be able to grant users access.
+- Bookmarking, keep track of book state.
 
 ## Requirements
 - none
