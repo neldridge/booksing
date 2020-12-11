@@ -149,6 +149,7 @@ func main() {
 		go app.searchUpdater()
 	}
 
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(Logger(app.logger), gin.Recovery())
 	r.SetHTMLTemplate(tpl)

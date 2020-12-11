@@ -20,7 +20,7 @@
                     <tr>
                         <td>
                             <a href="/rotateShelve/{{.Hash}}?method=manual" class="rotateButton" data-hash="{{.Hash}}">
-                                <img src="/icons/{{.Hash}}.png" id="{{.Hash}}_icon" width="32" height="32" />
+                                <img src="/static/{{.Icon}}.png" id="{{.Hash}}_icon" width="32" height="32" />
                             </a>
                         </td>
                         <td>{{crop .Author 30}}</td>
@@ -29,41 +29,44 @@
                         <td><button type="button" class="btn btn-outline-primary" data-toggle="modal"
                                 data-target="#book{{.Hash}}">
                                 More info
-                            </button></td>
-                    </tr>
-                    <!-- Modal -->
-                    <div class="modal fade" id="book{{.Hash}}" tabindex="-1" aria-labelledby="exampleModalLabel"
-                        aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="exampleModalLabel">{{.Author}} - {{.Title}}</h5>
-                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
-                                <div class="modal-body">
-                                    Added: {{.Added | prettyTime}}
-                                    <hr>
-                                    {{if eq .Description ""}}
-                                    No description
-                                    {{else}}
-                                    {{.Description}}
-                                    {{end}}
-                                </div>
-                                <div class="modal-footer">
-                                    {{if $.IsAdmin}}
-                                    <form method="POST" action="/admin/delete/{{.Hash}}">
-                                        <button type="submit" class="btn btn-danger">Delete</button>
-                                    </form>
-                                    {{end}}
-                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                    <a type="button" class="btn btn-primary"
-                                        href="/download?hash={{.Hash}}">Download</a>
+                            </button>
+                            <!-- Modal -->
+                            <div class="modal fade" id="book{{.Hash}}" tabindex="-1" aria-labelledby="exampleModalLabel"
+                                aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="exampleModalLabel">{{.Author}} - {{.Title}}</h5>
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                        <div class="modal-body">
+                                            Added: {{.Added | prettyTime}}
+                                            <hr>
+                                            {{if eq .Description ""}}
+                                            No description
+                                            {{else}}
+                                            {{.Description}}
+                                            {{end}}
+                                        </div>
+                                        <div class="modal-footer">
+                                            {{if $.IsAdmin}}
+                                            <form method="POST" action="/admin/delete/{{.Hash}}">
+                                                <button type="submit" class="btn btn-danger">Delete</button>
+                                            </form>
+                                            {{end}}
+                                            <button type="button" class="btn btn-secondary"
+                                                data-dismiss="modal">Close</button>
+                                            <a type="button" class="btn btn-primary"
+                                                href="/download?hash={{.Hash}}">Download</a>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
+
+                        </td>
+                    </tr>
                     {{end}}
                 </tbody>
             </table>
@@ -74,7 +77,7 @@
         <nav aria-label="search results navigation">
             <ul class="pagination justify-content-end">
                 <li class="page-item {{if eq .Offset 0}}disabled{{end}}">
-                    <a class="page-link" href="/?{{page "prev" .Q .Offset .Limit}}">prev</a>
+                    <a class="page-link" href="/?{{page " prev" .Q .Offset .Limit}}">prev</a>
                 </li>
                 {{range Iterate .Offset .Limit .Results}}
                 {{$off := index . 1}}
@@ -89,7 +92,7 @@
                 {{end}}
                 {{$lastOnPage := add .Offset .Limit}}
                 <li class="page-item {{if ge $lastOnPage .Results}}disabled{{end}}">
-                    <a class="page-link" href="/?{{page "next" .Q .Offset .Limit}}">next</a>
+                    <a class="page-link" href="/?{{page " next" .Q .Offset .Limit}}">next</a>
                 </li>
             </ul>
         </nav>

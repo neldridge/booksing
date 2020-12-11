@@ -46,6 +46,23 @@ func (app *booksingApp) search(c *gin.Context) {
 		return
 	}
 
+	u := c.MustGet("id")
+	user := u.(*booksing.User)
+	username := user.Name
+
+	for i, b := range books.Items {
+		icon, err := app.getUserIcon(username, b.Hash)
+		app.logger.WithFields(logrus.Fields{
+			"icon": icon,
+			"err":  err,
+		}).Info("checking bm")
+		b := &books.Items[i]
+		b.Icon, _ = app.getUserIcon(username, b.Hash)
+		app.logger.WithFields(logrus.Fields{
+			"icon": books.Items[i].Icon,
+		}).Info("Result in slice")
+	}
+
 	stop := time.Since(start)
 	latency := int(math.Ceil(float64(stop.Nanoseconds()) / 1000000.0))
 	c.HTML(200, "search.html", V{
@@ -199,6 +216,11 @@ func (app *booksingApp) rotateIcon(c *gin.Context) {
 		Icon:       newIcon,
 		LastChange: time.Now(),
 	}
+
+	if newIcon == booksing.DefaultShelveIcon() {
+		delete(user.Bookmarks, hash)
+	}
+
 	err = app.db.SaveUser(user)
 	if err != nil {
 		c.HTML(500, "error.html", V{
@@ -211,6 +233,7 @@ func (app *booksingApp) rotateIcon(c *gin.Context) {
 		return
 	}
 	c.JSON(200, gin.H{
+		"new": newIcon,
 		"msg": "ok",
 	})
 
@@ -260,4 +283,21 @@ func (app *booksingApp) serveIcon(c *gin.Context) {
 
 	c.Redirect(http.StatusFound, fmt.Sprintf("/static/%s.png", currentIcon))
 
+}
+
+func (app *booksingApp) getUserIcon(username, hash string) (icon booksing.ShelveIcon, err error) {
+	icon = booksing.DefaultShelveIcon()
+
+	user, err := app.db.GetUser(username)
+	if err != nil {
+		app.logger.WithError(err).Warning("unable to get user from db")
+		return
+	}
+
+	bm, ok := user.Bookmarks[hash]
+	if ok {
+		icon = bm.Icon
+	}
+
+	return
 }

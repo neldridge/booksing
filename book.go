@@ -33,6 +33,7 @@ type Book struct {
 	Description string
 	Added       time.Time `storm:"index"`
 	Path        string
+	Icon        ShelveIcon
 }
 
 type BookInput struct {
