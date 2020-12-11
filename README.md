@@ -37,7 +37,7 @@ Set the following env vars to configure booksing:
 | BOOKSING_LOGLEVEL     | `info`                 | :x:                | determines the loglevel, supported values: error, warning, info, debug                                                   |
 | BOOKSING_MQTTCLIENTID | `booksing`             | :x:                | Default client ID used in MQTT events                                                                                    |
 | BOOKSING_MQTTENABLE   | `false`                | :x:                | This determines if booksing will send out certain "events" on MQTT                                                       |
-| BOOKSING_MQTTHSOT     | `tcp://localhost:1883` | :x:                | The host to send events to                                                                                               |
+| BOOKSING_MQTTHOST     | `tcp://localhost:1883` | :x:                | The host to send events to                                                                                               |
 | BOOKSING_MQTTTOPIC    | `events`               | :x:                | The topic prefix to push events to                                                                                       |
 | BOOKSING_SAVEINTERVAL | `10s`                  | :x:                | The time between saves if the batchsize is not reached yet                                                               |
 | BOOKSING_TIMEZONE     | `Europe/Amsterdam`     | :x:                | Timezone used for storing all time information                                                                           |

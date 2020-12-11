@@ -39,7 +39,7 @@ type V struct {
 }
 
 type configuration struct {
-	AdminUser     string `required:"true"`
+	AdminUser     string `default:"unknown"`
 	UserHeader    string `default:""`
 	AllowAllusers bool   `default:"true"`
 	BookDir       string `default:"."`
