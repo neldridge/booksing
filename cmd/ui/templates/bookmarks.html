@@ -13,57 +13,25 @@
                         <th scope="col">title</th>
                         <th scope="col">added</th>
                         <th></th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     {{range .Books}}
-                    <tr>
+                    <tr onclick="window.location='/detail/{{.Hash}}'">
                         <td>
                             <a href="/rotateShelve/{{.Hash}}?method=manual" class="rotateButton" data-hash="{{.Hash}}">
-                                <img src="/icons/{{.Hash}}.png" id="{{.Hash}}_icon" width="32" height="32" />
+                                <img src="/static/{{.Icon}}.png" id="{{.Hash}}_icon" width="32" height="32" />
                             </a>
                         </td>
                         <td>{{crop .Author 30}}</td>
                         <td>{{crop .Title 50}}</td>
                         <td>{{.Added | relativeTime}}</td>
-                        <td><button type="button" class="btn btn-outline-primary" data-toggle="modal"
-                                data-target="#book{{.Hash}}">
-                                More info
-                            </button></td>
+                        <td> <a href="/detail/{{.Hash}}">info</a> </td>
+                        <td>
+                            <a href="/download?hash={{.Hash}}">download</a>
+                        </td>
                     </tr>
-                    <!-- Modal -->
-                    <div class="modal fade" id="book{{.Hash}}" tabindex="-1" aria-labelledby="exampleModalLabel"
-                        aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="exampleModalLabel">{{.Author}} - {{.Title}}</h5>
-                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
-                                <div class="modal-body">
-                                    Added: {{.Added | prettyTime}}
-                                    <hr>
-                                    {{if eq .Description ""}}
-                                    No description
-                                    {{else}}
-                                    {{.Description}}
-                                    {{end}}
-                                </div>
-                                <div class="modal-footer">
-                                    {{if $.IsAdmin}}
-                                    <form method="POST" action="/admin/delete/{{.Hash}}">
-                                        <button type="submit" class="btn btn-danger">Delete</button>
-                                    </form>
-                                    {{end}}
-                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                    <a type="button" class="btn btn-primary"
-                                        href="/download?hash={{.Hash}}">Download</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                     {{end}}
                 </tbody>
             </table>

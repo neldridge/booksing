@@ -29,10 +29,11 @@ type Book struct {
 	Hash        string `storm:"id"`
 	Title       string
 	Author      string
-	Language    string
+	Language    string `storm:"index"`
 	Description string
 	Added       time.Time `storm:"index"`
 	Path        string
+	Size        int64 `storm:"index"`
 	Icon        ShelveIcon
 }
 
@@ -89,6 +90,7 @@ func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
 		return nil, err
 	}
 	book.Added = fi.ModTime()
+	book.Size = fi.Size()
 
 	book.Title = Fix(book.Title, true, false)
 	book.Author = Fix(book.Author, true, true)

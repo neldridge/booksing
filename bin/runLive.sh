@@ -11,7 +11,7 @@ function log {
 
 function cleanup {
     log "Removing old workdir"
-    rm -rf workingdir
+    rm -rf "$workingdir"
     log "Done. ✅"
 }
 

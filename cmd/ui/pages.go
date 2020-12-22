@@ -50,17 +50,9 @@ func (app *booksingApp) search(c *gin.Context) {
 	user := u.(*booksing.User)
 	username := user.Name
 
-	for i, b := range books.Items {
-		icon, err := app.getUserIcon(username, b.Hash)
-		app.logger.WithFields(logrus.Fields{
-			"icon": icon,
-			"err":  err,
-		}).Info("checking bm")
+	for i := range books.Items {
 		b := &books.Items[i]
 		b.Icon, _ = app.getUserIcon(username, b.Hash)
-		app.logger.WithFields(logrus.Fields{
-			"icon": books.Items[i].Icon,
-		}).Info("Result in slice")
 	}
 
 	stop := time.Since(start)
@@ -242,6 +234,7 @@ func (app *booksingApp) rotateIcon(c *gin.Context) {
 func (app *booksingApp) bookmarks(c *gin.Context) {
 	u := c.MustGet("id")
 	user := u.(*booksing.User)
+	username := user.Name
 	var books []booksing.Book
 
 	start := time.Now()
@@ -252,6 +245,11 @@ func (app *booksingApp) bookmarks(c *gin.Context) {
 			continue
 		}
 		books = append(books, *b)
+	}
+
+	for i := range books {
+		b := &books[i]
+		b.Icon, _ = app.getUserIcon(username, b.Hash)
 	}
 
 	stop := time.Since(start)
@@ -265,6 +263,32 @@ func (app *booksingApp) bookmarks(c *gin.Context) {
 		TotalBooks: app.db.GetBookCount(),
 		Indexing:   app.state == "indexing",
 	})
+}
+
+func (app *booksingApp) detailPage(c *gin.Context) {
+	hash := c.Param("hash")
+
+	u := c.MustGet("id")
+	user := u.(*booksing.User)
+	username := user.Name
+
+	b, err := app.db.GetBook(hash)
+	if err != nil {
+		c.HTML(500, "error.html", V{
+			Error: err,
+		})
+		return
+	}
+	b.Icon, _ = app.getUserIcon(username, b.Hash)
+
+	c.HTML(200, "detail.html", V{
+		Results:    0,
+		Book:       b,
+		IsAdmin:    c.GetBool("isAdmin"),
+		TotalBooks: app.db.GetBookCount(),
+		Indexing:   app.state == "indexing",
+	})
+
 }
 
 func (app *booksingApp) serveIcon(c *gin.Context) {

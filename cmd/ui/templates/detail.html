@@ -1,0 +1,45 @@
+{{define "detail.html"}}
+{{template "base.html"}}
+
+<body>
+    {{template "nav.html" .}}
+
+    <div class="container">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <a href="/rotateShelve/{{.Book.Hash}}?method=manual" class="rotateButton"
+                        data-hash="{{.Book.Hash}}">
+                        <img src="/static/{{.Book.Icon}}.png" id="{{.Book.Hash}}_icon" width="32" height="32" /></a>
+                    {{.Book.Author}} - {{.Book.Title}}
+                </h5>
+                <h6 class="card-subtitle mb-2 text-muted">Added: {{.Book.Added | prettyTime}}
+                    ({{.Book.Added | relativeTime}})</h6>
+                <h6 class="card-subtitle mb-2 text-muted">Language: {{.Book.Language}}</h6>
+                {{if .IsAdmin}}
+                <h6 class="card-subtitle mb-2 text-muted">Location: {{.Book.Path}}</h6>
+                <h6 class="card-subtitle mb-2 text-muted">Size: {{.Book.Size | filesize}}</h6>
+                <form method="POST" action="/admin/delete/{{.Book.Hash}}">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+                {{end}}
+                <hr>
+
+                {{if eq .Book.Description ""}}
+                No description
+                {{else}}
+                {{.Book.Description | nl2br}}
+                <hr>
+                {{end}}
+                </p>
+                Download: <a href="/download?hash={{.Book.Hash}}">{{.Book.Path | filename}}</a>
+                ({{.Book.Size | filesize}})
+            </div>
+        </div>
+
+    </div>
+</body>
+
+
+{{template "footer.html"}}
+{{end}}
