@@ -8,7 +8,6 @@
             <table class="table table-sm align-middle table-hover" style="overflow-x: auto; white-space: nowrap">
                 <thead>
                     <tr>
-                        <th></th>
                         <th scope="col">author</th>
                         <th scope="col">title</th>
                         <th scope="col">added</th>
@@ -19,11 +18,6 @@
                 <tbody>
                     {{range .Books}}
                     <tr onclick="window.location='/detail/{{.Hash}}'">
-                        <td>
-                            <a href="/rotateShelve/{{.Hash}}?method=manual" class="rotateButton" data-hash="{{.Hash}}">
-                                <img src="/static/{{.Icon}}.png" id="{{.Hash}}_icon" width="32" height="32" />
-                            </a>
-                        </td>
                         <td>{{crop .Author 30}}</td>
                         <td>{{crop .Title 50}}</td>
                         <td>{{.Added | relativeTime}}</td>

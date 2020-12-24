@@ -11,7 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing"
-	"github.com/gnur/booksing/storm"
+	"github.com/gnur/booksing/sqlite"
 	"github.com/markbates/pkger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -75,7 +75,9 @@ func main() {
 
 	var db database
 	log.WithField("dbpath", cfg.DatabaseDir).Debug("using this file")
-	db, err = storm.New(cfg.DatabaseDir)
+	//db, err = storm.New(cfg.DatabaseDir)
+	db, err = sqlite.New(cfg.DatabaseDir)
+
 	if err != nil {
 		log.WithField("err", err).Fatal("could not create fileDB")
 	}
@@ -175,12 +177,8 @@ func main() {
 	auth.Use(app.BearerTokenMiddleware())
 	{
 		auth.GET("/", app.search)
-		auth.GET("/bookmarks", app.bookmarks)
-		auth.GET("/rotateShelve/:hash", app.rotateIcon)
 		auth.GET("/detail/:hash", app.detailPage)
-		auth.POST("/rotateShelve/:hash", app.rotateIcon)
 		auth.GET("/download", app.downloadBook)
-		auth.GET("/icons/:hash", app.serveIcon)
 
 	}
 

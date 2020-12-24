@@ -2,20 +2,16 @@ package booksing
 
 import (
 	"time"
+
+	"gorm.io/gorm"
 )
 
-// User
 type User struct {
-	ID        int    `storm:"id,increment"`
-	Name      string `storm:"unique,index"`
+	gorm.Model
+	ID        int
+	Name      string `gorm:"uniqueIndex"`
 	IsAdmin   bool
 	IsAllowed bool
 	Created   time.Time
 	LastSeen  time.Time
-	Bookmarks map[string]Bookmark //map[book_hash]shelveicon
-}
-
-type Bookmark struct {
-	Icon       ShelveIcon
-	LastChange time.Time
 }

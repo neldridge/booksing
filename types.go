@@ -3,6 +3,8 @@ package booksing
 import (
 	"errors"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 var ErrNonUniqueResult = errors.New("Query gave more then 1 result")
@@ -11,7 +13,7 @@ var ErrDuplicate = errors.New("Duplicate key")
 
 // RefreshResult holds the result of a full refresh
 type RefreshResult struct {
-	ID        int `storm:"id,increment"`
+	gorm.Model
 	StartTime time.Time
 	StopTime  time.Time
 	Old       int
@@ -22,29 +24,11 @@ type RefreshResult struct {
 }
 
 type Download struct {
-	ID        int       `storm:"id,increment"`
+	gorm.Model
 	Book      string    `json:"hash"`
 	User      string    `json:"user"`
 	IP        string    `json:"ip"`
 	Timestamp time.Time `json:"timestamp"`
-}
-
-type PipelineResult struct {
-	Title  string   `bson:"_id"`
-	Count  int      `bson:"count"`
-	Hashes []string `bson:"docs"`
-}
-
-type AddBookInput struct {
-	Title       string `json:"title"`
-	Author      string `json:"author"`
-	Language    string `json:"language"`
-	Description string `json:"description"`
-}
-
-type AddBooksResult struct {
-	Added  int
-	Errors int
 }
 
 type BookCount struct {

@@ -8,9 +8,6 @@
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title">
-                    <a href="/rotateShelve/{{.Book.Hash}}?method=manual" class="rotateButton"
-                        data-hash="{{.Book.Hash}}">
-                        <img src="/static/{{.Book.Icon}}.png" id="{{.Book.Hash}}_icon" width="32" height="32" /></a>
                     {{.Book.Author}} - {{.Book.Title}}
                 </h5>
                 <h6 class="card-subtitle mb-2 text-muted">Added: {{.Book.Added | prettyTime}}
