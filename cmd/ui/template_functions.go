@@ -176,7 +176,7 @@ var templateFunctions = template.FuncMap{
 	},
 	"json": func(s interface{}) template.HTML {
 		json, _ := json.MarshalIndent(s, "", "  ")
-		return template.HTML(string(json))
+		return template.HTML(strings.Replace(string(json), "\n", "<br />", -1))
 	},
 	"relativeTime": func(s interface{}) template.HTML {
 		t, ok := s.(time.Time)

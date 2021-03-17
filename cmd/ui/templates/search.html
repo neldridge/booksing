@@ -36,7 +36,7 @@
         <nav aria-label="search results navigation">
             <ul class="pagination justify-content-end">
                 <li class="page-item {{if eq .Offset 0}}disabled{{end}}">
-                    <a class="page-link" href="/?{{page " prev" .Q .Offset .Limit}}">prev</a>
+                    <a class="page-link" href='/?{{page "prev" .Q .Offset .Limit}}'>prev</a>
                 </li>
                 {{range Iterate .Offset .Limit .Results}}
                 {{$off := index . 1}}
@@ -51,7 +51,7 @@
                 {{end}}
                 {{$lastOnPage := add .Offset .Limit}}
                 <li class="page-item {{if ge $lastOnPage .Results}}disabled{{end}}">
-                    <a class="page-link" href="/?{{page " next" .Q .Offset .Limit}}">next</a>
+                    <a class="page-link" href='/?{{page "next" .Q .Offset .Limit}}'>next</a>
                 </li>
             </ul>
         </nav>

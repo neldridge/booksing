@@ -29,8 +29,16 @@
                 <hr>
                 {{end}}
                 </p>
-                Download: <a href="/download?hash={{.Book.Hash}}">{{.Book.Path | filename}}</a>
-                ({{.Book.Size | filesize}})
+                {{ $hash := .Book.Hash }}
+                {{range .ExtraPaths}}
+                Download: <a href="/download?hash={{$.Book.Hash}}">{{. | filename}}</a><br>
+                {{end}}
+                {{if .IsAdmin}}
+                <code>
+                    {{.Book | json }}
+                </code>
+                {{end}}
+                
             </div>
         </div>
 

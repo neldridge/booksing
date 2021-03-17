@@ -16,6 +16,11 @@ Download an appropriate release from the [release](https://github.com/gnur/books
 - See what books have been downloaded
 - If you have an authenticating proxy booksing can determine the username from a header, and the admin user will be able to grant users access.
 
+## todo
+- make sure sqlite features work reliably
+- add some way to convert books if ebook-convert is present
+- 
+
 ## Requirements
 - none
 

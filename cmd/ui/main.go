@@ -25,11 +25,11 @@ type V struct {
 	Error      error
 	Books      []booksing.Book
 	Book       *booksing.Book
+	ExtraPaths []string
 	Users      []booksing.User
 	Downloads  []booksing.Download
 	Q          string
 	TimeTaken  int
-	Stats      []booksing.BookCount
 	IsAdmin    bool
 	Username   string
 	TotalBooks int
@@ -128,7 +128,6 @@ func main() {
 		logger:       log.WithField("app", "booksing"),
 		cfg:          cfg,
 		bookQ:        make(chan string),
-		resultQ:      make(chan parseResult),
 		searchQ:      make(chan booksing.Book),
 		saveInterval: interval,
 	}
@@ -147,7 +146,6 @@ func main() {
 		for w := 0; w < 5; w++ { //not sure yet how concurrent-proof my solution is
 			go app.bookParser()
 		}
-		go app.resultParser()
 		go app.searchUpdater()
 	}
 
@@ -186,7 +184,6 @@ func main() {
 	admin.Use(gin.Recovery(), app.BearerTokenMiddleware(), app.mustBeAdmin())
 	{
 		admin.GET("/users", app.showUsers)
-		admin.GET("/stats", app.showStats)
 		admin.GET("/downloads", app.showDownloads)
 		admin.POST("/delete/:hash", app.deleteBook)
 		admin.POST("user/:username", app.updateUser)

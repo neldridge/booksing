@@ -6,9 +6,11 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	zglob "github.com/mattn/go-zglob"
 	"github.com/sirupsen/logrus"
 )
 
@@ -82,30 +84,6 @@ func (app *booksingApp) showUsers(c *gin.Context) {
 
 }
 
-func (app *booksingApp) showStats(c *gin.Context) {
-	start := time.Now().Add(-365 * 24 * time.Hour)
-	end := time.Now()
-
-	stats, err := app.db.GetBookCountHistory(start, end)
-	if err != nil {
-		c.HTML(403, "error.html", V{
-			Error: err,
-		})
-		c.Abort()
-		return
-	}
-
-	c.HTML(200, "stats.html", V{
-		Error:      err,
-		Q:          "",
-		IsAdmin:    c.GetBool("isAdmin"),
-		TotalBooks: app.db.GetBookCount(),
-		Stats:      stats,
-		Indexing:   app.state == "indexing",
-	})
-
-}
-
 func (app *booksingApp) deleteBook(c *gin.Context) {
 	hash := c.Param("hash")
 
@@ -140,13 +118,6 @@ func (app *booksingApp) deleteBook(c *gin.Context) {
 			Error: fmt.Errorf("Unable to delete book from database: %w", err),
 		})
 		return
-	}
-	err = app.db.UpdateBookCount(-1)
-	if err != nil {
-		app.logger.WithFields(logrus.Fields{
-			"hash": hash,
-			"err":  err,
-		}).Error("could not update book count")
 	}
 	app.logger.WithFields(logrus.Fields{
 		"hash": hash,
@@ -186,9 +157,20 @@ func (app *booksingApp) detailPage(c *gin.Context) {
 		return
 	}
 
+	globPath := strings.Replace(b.Path, ".epub", ".*", 1)
+	app.logger.WithField("path", globPath).Debug("Searching here for other formats")
+	books, err := zglob.Glob(globPath)
+	if err != nil {
+		c.HTML(500, "error.html", V{
+			Error: err,
+		})
+		return
+	}
+
 	c.HTML(200, "detail.html", V{
 		Results:    0,
 		Book:       b,
+		ExtraPaths: books,
 		IsAdmin:    c.GetBool("isAdmin"),
 		TotalBooks: app.db.GetBookCount(),
 		Indexing:   app.state == "indexing",

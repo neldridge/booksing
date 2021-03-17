@@ -30,12 +30,19 @@ type Book struct {
 	gorm.Model
 	Hash        string `gorm:"uniqueIndex"`
 	Title       string
-	Author      string
+	Author      string `gorm:"index"`
 	Language    string `gorm:"index"`
 	Description string
 	Added       time.Time `gorm:"index"`
 	Path        string
 	Size        int64 `gorm:"index"`
+	HasCover    bool
+	CoverPath   string
+	Publisher   string
+	ISBN        string
+	Series      string `gorm:"index"`
+	PublishDate time.Time
+	SeriesIndex float64
 }
 
 type BookInput struct {
@@ -66,8 +73,9 @@ type FileLocation struct {
 
 // NewBookFromFile creates a book object from a file
 func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
-	epub, err := epub.ParseFile(bookpath)
+	epub, cover, err := epub.ParseFile(bookpath)
 	if err != nil {
+		fmt.Println(cover)
 		return nil, err
 	}
 
@@ -76,6 +84,12 @@ func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
 		Author:      epub.Author,
 		Language:    epub.Language,
 		Description: epub.Description,
+		HasCover:    epub.HasCover,
+		Publisher:   epub.Publisher,
+		ISBN:        epub.ISBN,
+		Series:      epub.Series,
+		PublishDate: epub.PublishDate,
+		SeriesIndex: epub.SeriesIndex,
 	}
 
 	f, err := os.Open(bookpath)

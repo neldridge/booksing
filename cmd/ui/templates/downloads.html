@@ -18,10 +18,10 @@
                 {{range .Downloads}}
                 <tr>
                     <td>{{.User}}</td>
-                    <td>{{.Book}}</td>
+                    <td> <a href="/detail/{{.Book}}">{{.Book}}</a> </td>
                     <td>
-                        <a href="#" data-toggle="tooltip"
-                            title="{{.Timestamp | prettyTime}}">{{.Timestamp | relativeTime}}</a>
+                        <a href="#" data-toggle="tooltip" title="{{.Timestamp | prettyTime}}">
+                            {{.Timestamp | relativeTime}}</a>
                     </td>
                     <td>{{.IP}}</td>
                 </tr>

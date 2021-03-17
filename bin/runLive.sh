@@ -4,6 +4,7 @@ ulimit -S -n 1024
 
 workingdir=$(mktemp -d)
 mkdir "${workingdir}/import"
+mkdir "${workingdir}/db"
 
 function log {
     echo "> $(date +%T) $*"
@@ -31,7 +32,7 @@ export BOOKSING_FAILDIR="${workingdir}/failed"
 export BOOKSING_BOOKDIR="${workingdir}/"
 export BOOKSING_SAVEINTERVAL="20s"
 export BOOKSING_MQTTENABLED=true
-export BOOKSING_MQTTHOST="tcp://sanny.egdk.nl:1883"
+export BOOKSING_MQTTHOST="tcp://sanny.aawa.nl:1883"
 export BOOKSING_MQTTTOPIC="events"
 export BOOKSING_MQTTCLIENTID="booksing"
 export BOOKSING_BINDADDRESS=":7133"
