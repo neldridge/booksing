@@ -3,6 +3,7 @@ package booksing
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -23,6 +24,7 @@ var filenameSafe = regexp.MustCompile("[^a-zA-Z0-9 -]+")
 type StorageLocation string
 
 var ErrFileAlreadyExists = errors.New("Target file already exists")
+var ErrCoverWriteFailed = errors.New("Failed to write cover")
 
 const (
 	FileStorage StorageLocation = "FILE"
@@ -128,6 +130,13 @@ func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
 		fp = newBookPath
 	}
 	book.Path = fp
+	if book.HasCover {
+		book.CoverPath = strings.Replace(fp, ".epub", ".jpg", 1)
+		err = ioutil.WriteFile(book.CoverPath, cover, 0644)
+		if err != nil {
+			return &book, ErrCoverWriteFailed
+		}
+	}
 
 	return &book, nil
 }

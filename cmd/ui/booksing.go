@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"sync/atomic"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/gnur/booksing"
 	zglob "github.com/mattn/go-zglob"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/semaphore"
 )
 
 const (
@@ -141,50 +144,76 @@ func (app *booksingApp) refresh() {
 		app.logger.Debug("Not adding any books because nothing is new")
 		return
 	}
+	var books []booksing.Book
+	counter := 0
 
 	app.logger.WithFields(logrus.Fields{
 		"total":   len(matches),
 		"bookdir": app.importDir,
 	}).Info("located books on filesystem, processing per batchsize")
+	ctx := context.TODO()
+	toProcess := len(matches)
+	bookQ := make(chan *booksing.Book)
 
 	for _, filename := range matches {
 		app.logger.WithField("f", filename).Debug("parsing book")
-		book, err := booksing.NewBookFromFile(filename, app.bookDir)
 
-		if err == booksing.ErrFileAlreadyExists {
-			app.logger.WithFields(logrus.Fields{
-				"file":   filename,
-				"hash":   book.Hash,
-				"reason": "duplicate",
-				"err":    err,
-			}).Info("Moving book to failed")
-			app.moveBookToFailed(filename)
+		sem := semaphore.NewWeighted(int64(runtime.GOMAXPROCS(0)))
+
+		go func(f string) {
+			if err := sem.Acquire(ctx, 1); err != nil {
+				app.logger.WithError(err).Error("failed to acquire semaphore")
+			}
+			defer sem.Release(1)
+
+			book, err := booksing.NewBookFromFile(f, app.bookDir)
+			if err != nil {
+				app.logger.WithError(err).Error("Failed to parse book")
+				app.moveBookToFailed(f)
+			}
+
+			bookQ <- book
+		}(filename)
+
+	}
+	processed := 0
+	for book := range bookQ {
+		processed++
+		if book == nil {
+			if processed == toProcess {
+				close(bookQ)
+			}
 			continue
-
+		}
+		books = append(books, *book)
+		counter++
+		if len(books) == 50 || processed == toProcess {
+			err = app.db.AddBooks(books)
+			if err != nil {
+				app.logger.WithFields(logrus.Fields{
+					"err": err,
+				}).Warning("bulk insert failed")
+			}
+			books = []booksing.Book{}
+		}
+		app.logger.WithField("counter", counter).Debug("Found some books")
+		if processed == toProcess {
+			close(bookQ)
 		}
 
+	}
+	if len(books) > 0 {
+		app.logger.Error("This should absolutely not happen")
+		err = app.db.AddBooks(books)
 		if err != nil {
 			app.logger.WithFields(logrus.Fields{
-				"file":   filename,
-				"reason": "invalid",
+				"reason": "bulk insert failed",
 				"err":    err,
 			}).Info("Moving book to failed")
-			app.moveBookToFailed(filename)
-			continue
-		}
-
-		//all books get added to search, even duplicates
-		err = app.db.AddBook(*book)
-		if err != nil {
-			app.logger.WithFields(logrus.Fields{
-				"file":   filename,
-				"reason": "invalid",
-				"err":    err,
-			}).Info("Moving book to failed")
-			app.moveBookToFailed(filename)
-			continue
 		}
 	}
+
+	app.logger.Info("Done with refresh")
 
 	//move none epub files to failed dir
 

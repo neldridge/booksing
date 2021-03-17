@@ -21,6 +21,12 @@
                 </form>
                 {{end}}
                 <hr>
+                {{if .Book.HasCover}}
+                    <div class="img-square-wrapper">
+                        <img class="" width=300 src="/download?hash={{$.Book.Hash}}&file={{$.Book.CoverPath}}" alt="book cover">
+                    </div>
+                    <hr>
+                {{end}}
 
                 {{if eq .Book.Description ""}}
                 No description
@@ -31,7 +37,9 @@
                 </p>
                 {{ $hash := .Book.Hash }}
                 {{range .ExtraPaths}}
-                Download: <a href="/download?hash={{$.Book.Hash}}">{{. | filename}}</a><br>
+                    {{if ne . $.Book.CoverPath}}
+                        Download: <a href="/download?hash={{$.Book.Hash}}&file={{.}}">{{. | filename}}</a><br>
+                    {{end}}
                 {{end}}
                 {{if .IsAdmin}}
                 <code>

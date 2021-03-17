@@ -13,7 +13,6 @@ require (
 	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/kennygrant/sanitize v1.2.4
-	github.com/lib/pq v1.8.0 // indirect
 	github.com/markbates/pkger v0.17.1
 	github.com/mattn/go-zglob v0.0.3
 	github.com/moraes/isbn v0.0.0-20151007102746-e6388fb1bfd5
@@ -28,11 +27,11 @@ require (
 	golang.org/x/crypto v0.0.0-20201203163018-be400aefbc4c // indirect
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/net v0.0.0-20201202161906-c7110b5ffcbb // indirect
+	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 	golang.org/x/sys v0.0.0-20201202213521-69691e467435 // indirect
 	golang.org/x/text v0.3.4
 	golang.org/x/tools v0.0.0-20201204062850-545788942d5f
 	google.golang.org/protobuf v1.25.0 // indirect
-	gorm.io/driver/postgres v1.0.7
 	gorm.io/driver/sqlite v1.1.4
 	gorm.io/gorm v1.20.12
 )

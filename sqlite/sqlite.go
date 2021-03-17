@@ -6,6 +6,7 @@ import (
 	"github.com/gnur/booksing"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 )
 
@@ -134,20 +135,9 @@ func (db *liteDB) GetBook(hash string) (*booksing.Book, error) {
 }
 
 func (db *liteDB) AddBooks(books []booksing.Book) error {
-	var err error
-	var errs []error
+	tx := db.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&books)
 
-	for _, b := range books {
-		err = db.AddBook(b)
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	if len(errs) > 0 {
-		return errs[0]
-	}
-	return nil
+	return tx.Error
 }
 
 func (db *liteDB) DeleteBook(hash string) error {
