@@ -7,6 +7,7 @@ bookdump/*
 dist/*
 web/node_modules/*
 testdata/odd-collection/*
+testdata/import/big/*
 .idea
 *.db
 booksing-creds.json
