@@ -19,7 +19,7 @@ Download an appropriate release from the [release](https://github.com/gnur/books
 ## todo
 - make sure sqlite features work reliably
 - add some way to convert books if ebook-convert is present
-- 
+- convert go go embed
 
 ## Requirements
 - none

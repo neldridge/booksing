@@ -13,7 +13,6 @@ import (
 	"github.com/gnur/booksing"
 	"github.com/gnur/booksing/sqlite"
 	"github.com/markbates/pkger"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/kelseyhightower/envconfig"
 	log "github.com/sirupsen/logrus"
@@ -49,10 +48,6 @@ type configuration struct {
 	LogLevel          string   `default:"info"`
 	BindAddress       string   `default:":7132"`
 	Timezone          string   `default:"Europe/Amsterdam"`
-	MQTTEnabled       bool     `default:"false"`
-	MQTTTopic         string   `default:"events"`
-	MQTTHost          string   `default:"tcp://localhost:1883"`
-	MQTTClientID      string   `default:"booksing"`
 	AcceptedLanguages []string `default:""`
 	MaxSize           int64    `default:"30000000"`
 }
@@ -74,7 +69,6 @@ func main() {
 
 	var db database
 	log.WithField("dbpath", cfg.DatabaseDir).Debug("using this file")
-	//db, err = storm.New(cfg.DatabaseDir)
 	db, err = sqlite.New(cfg.DatabaseDir)
 
 	if err != nil {
@@ -123,15 +117,6 @@ func main() {
 		cfg:       cfg,
 	}
 
-	if app.cfg.MQTTEnabled {
-		mqttClient, err := newMQTTClient(cfg.MQTTHost, cfg.MQTTClientID)
-		if err != nil {
-			log.WithField("err", err).Fatal("Unable to connect to mqtt")
-			return
-		}
-		app.mqttClient = mqttClient
-	}
-
 	if cfg.ImportDir != "" {
 		go app.refreshLoop()
 	}
@@ -145,8 +130,6 @@ func main() {
 		c.Header("Cache-Control", "public, max-age=86400, immutable")
 	})
 	static.StaticFS("/static", pkger.Dir("/cmd/ui/static"))
-
-	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	r.GET("/kill", func(c *gin.Context) {
 		app.logger.Fatal("Killing so I get restarted anew")

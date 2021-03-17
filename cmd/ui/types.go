@@ -3,16 +3,14 @@ package main
 import (
 	"time"
 
-	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gnur/booksing"
 	"github.com/sirupsen/logrus"
 )
 
 // booksingApp holds all relevant global stuff for the booksing server
 type booksingApp struct {
-	db         database
-	mqttClient mqtt.Client
-	bookDir    string
+	db      database
+	bookDir string
 	//importDir is very important
 	importDir string
 	logger    *logrus.Entry
