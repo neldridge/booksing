@@ -133,7 +133,7 @@ func (db *liteDB) GetBook(hash string) (*booksing.Book, error) {
 	return &b, tx.Error
 }
 
-func (db *liteDB) AddBooks(books []booksing.Book, sync bool) error {
+func (db *liteDB) AddBooks(books []booksing.Book) error {
 	var err error
 	var errs []error
 

@@ -128,44 +128,40 @@ func (app *booksingApp) refresh() {
 	defer atomic.StoreUint32(&locker, stateUnlocked)
 	defer func() {
 		app.state = "idle"
-		statusGauge.Set(0)
 	}()
 
 	app.state = "indexing"
-	statusGauge.Set(1)
 	matches, err := zglob.Glob(filepath.Join(app.importDir, "/**/*.epub"))
 	if err != nil {
 		app.logger.WithField("err", err).Error("glob of all books failed")
 		return
 	}
 
+	if len(matches) == 0 {
+		app.logger.Debug("Not adding any books because nothing is new")
+		return
+	}
+
 	app.logger.WithFields(logrus.Fields{
-		"total":     len(matches),
-		"bookdir":   app.importDir,
-		"batchsize": app.cfg.BatchSize,
+		"total":   len(matches),
+		"bookdir": app.importDir,
 	}).Info("located books on filesystem, processing per batchsize")
 
 	for _, filename := range matches {
-		app.bookQ <- filename
-	}
-
-}
-
-func (app *booksingApp) refreshBooks(c *gin.Context) {
-	app.refresh()
-}
-
-func (app *booksingApp) bookParser() {
-	epubParseProccessed := booksProcessed.WithLabelValues("parse")
-	epubParseTime := booksProcessedTime.WithLabelValues("parse")
-
-	for filename := range app.bookQ {
 		app.logger.WithField("f", filename).Debug("parsing book")
-		start := time.Now()
 		book, err := booksing.NewBookFromFile(filename, app.bookDir)
-		duration := time.Since(start).Microseconds()
-		epubParseProccessed.Inc()
-		epubParseTime.Add(float64(duration) / 1000000)
+
+		if err == booksing.ErrFileAlreadyExists {
+			app.logger.WithFields(logrus.Fields{
+				"file":   filename,
+				"hash":   book.Hash,
+				"reason": "duplicate",
+				"err":    err,
+			}).Info("Moving book to failed")
+			app.moveBookToFailed(filename)
+			continue
+
+		}
 
 		if err != nil {
 			app.logger.WithFields(logrus.Fields{
@@ -178,9 +174,22 @@ func (app *booksingApp) bookParser() {
 		}
 
 		//all books get added to search, even duplicates
-		app.searchQ <- *book
-
+		err = app.db.AddBook(*book)
+		if err != nil {
+			app.logger.WithFields(logrus.Fields{
+				"file":   filename,
+				"reason": "invalid",
+				"err":    err,
+			}).Info("Moving book to failed")
+			app.moveBookToFailed(filename)
+			continue
+		}
 	}
+
+	//move none epub files to failed dir
+
+	//remove empty directories
+
 }
 
 func (app *booksingApp) moveBookToFailed(bookpath string) {
@@ -223,62 +232,4 @@ func (app *booksingApp) addUser(c *gin.Context) {
 	}
 
 	c.Redirect(302, c.Request.Referer())
-}
-
-func (app *booksingApp) searchUpdater() {
-	lastSave := time.Now()
-	ticker := time.NewTicker(app.saveInterval)
-	var books []booksing.Book
-	searchProcessed := booksProcessed.WithLabelValues("search")
-	searchTime := booksProcessedTime.WithLabelValues("search")
-	searchErrors := searchErrorsMetric.WithLabelValues("update")
-
-	for {
-		app.logger.WithField("bookstoupdate", len(books)).Debug("search books ready to update")
-		select {
-		case <-ticker.C:
-			app.logger.Debug("Storing results from ticker")
-			if time.Since(lastSave) < app.saveInterval {
-				continue
-			} else if len(books) == 0 {
-				continue
-			}
-			start := time.Now()
-			err := app.db.AddBooks(books, false)
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"err": err,
-				}).Error("Failed updating search index")
-				searchErrors.Inc()
-			} else {
-				//only update metrics if it succeeded
-				duration := time.Since(start).Microseconds()
-				searchProcessed.Add(float64(len(books)))
-				searchTime.Add(float64(duration) / 1000000)
-			}
-
-			books = []booksing.Book{}
-			lastSave = time.Now()
-		case b := <-app.searchQ:
-			books = append(books, b)
-
-			if len(books) >= app.cfg.BatchSize {
-				start := time.Now()
-				err := app.db.AddBooks(books, true)
-				if err != nil {
-					searchErrors.Inc()
-					app.logger.WithFields(logrus.Fields{
-						"err": err,
-					}).Error("Failed updating search index")
-				} else {
-					//only update metrics if it succeeded
-					duration := time.Since(start).Microseconds()
-					searchProcessed.Add(float64(len(books)))
-					searchTime.Add(float64(duration) / 1000000)
-				}
-				books = []booksing.Book{}
-				lastSave = time.Now()
-			}
-		}
-	}
 }

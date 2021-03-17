@@ -1,6 +1,7 @@
 package booksing
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -20,6 +21,8 @@ var drukRemove = regexp.MustCompile(`(?i)/ druk [0-9]+`)
 var filenameSafe = regexp.MustCompile("[^a-zA-Z0-9 -]+")
 
 type StorageLocation string
+
+var ErrFileAlreadyExists = errors.New("Target file already exists")
 
 const (
 	FileStorage StorageLocation = "FILE"
@@ -115,6 +118,9 @@ func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
 	book.Hash = HashBook(book.Author, book.Title)
 
 	newBookPath := path.Join(baseDir, GetBookPath(book.Title, book.Author)+".epub")
+	if _, err := os.Stat(newBookPath); err == nil {
+		return &book, ErrFileAlreadyExists
+	}
 	baseDir = filepath.Dir(newBookPath)
 	err = os.MkdirAll(baseDir, 0755)
 	if err == nil {

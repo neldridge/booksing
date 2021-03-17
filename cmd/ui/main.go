@@ -53,9 +53,6 @@ type configuration struct {
 	MQTTTopic     string `default:"events"`
 	MQTTHost      string `default:"tcp://localhost:1883"`
 	MQTTClientID  string `default:"booksing"`
-	BatchSize     int    `default:"50"`
-	Workers       int    `default:"5"`
-	SaveInterval  string `default:"10s"`
 }
 
 func main() {
@@ -82,11 +79,6 @@ func main() {
 		log.WithField("err", err).Fatal("could not create fileDB")
 	}
 	defer db.Close()
-
-	interval, err := time.ParseDuration(cfg.SaveInterval)
-	if err != nil {
-		interval = 10 * time.Second
-	}
 
 	tz, err := time.LoadLocation(cfg.Timezone)
 	if err != nil {
@@ -120,16 +112,13 @@ func main() {
 	}
 
 	app := booksingApp{
-		db:           db,
-		bookDir:      cfg.BookDir,
-		importDir:    cfg.ImportDir,
-		timezone:     tz,
-		adminUser:    cfg.AdminUser,
-		logger:       log.WithField("app", "booksing"),
-		cfg:          cfg,
-		bookQ:        make(chan string),
-		searchQ:      make(chan booksing.Book),
-		saveInterval: interval,
+		db:        db,
+		bookDir:   cfg.BookDir,
+		importDir: cfg.ImportDir,
+		timezone:  tz,
+		adminUser: cfg.AdminUser,
+		logger:    log.WithField("app", "booksing"),
+		cfg:       cfg,
 	}
 
 	if app.cfg.MQTTEnabled {
@@ -143,10 +132,6 @@ func main() {
 
 	if cfg.ImportDir != "" {
 		go app.refreshLoop()
-		for w := 0; w < 5; w++ { //not sure yet how concurrent-proof my solution is
-			go app.bookParser()
-		}
-		go app.searchUpdater()
 	}
 
 	gin.SetMode(gin.ReleaseMode)

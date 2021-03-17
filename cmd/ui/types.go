@@ -14,15 +14,12 @@ type booksingApp struct {
 	mqttClient mqtt.Client
 	bookDir    string
 	//importDir is very important
-	importDir    string
-	logger       *logrus.Entry
-	timezone     *time.Location
-	adminUser    string
-	cfg          configuration
-	state        string
-	bookQ        chan string
-	searchQ      chan booksing.Book
-	saveInterval time.Duration
+	importDir string
+	logger    *logrus.Entry
+	timezone  *time.Location
+	adminUser string
+	cfg       configuration
+	state     string
 }
 
 type database interface {
@@ -40,7 +37,8 @@ type database interface {
 
 	Close()
 
-	AddBooks([]booksing.Book, bool) error
+	AddBooks([]booksing.Book) error
+	AddBook(booksing.Book) error
 	GetBook(string) (*booksing.Book, error)
 	DeleteBook(string) error
 	GetBooks(string, int64, int64) (*booksing.SearchResult, error)
