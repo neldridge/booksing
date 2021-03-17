@@ -36,6 +36,7 @@ export BOOKSING_MQTTHOST="tcp://sanny.aawa.nl:1883"
 export BOOKSING_MQTTTOPIC="events"
 export BOOKSING_MQTTCLIENTID="booksing"
 export BOOKSING_BINDADDRESS=":7133"
+export BOOKSING_ACCEPTEDLANGUAGES="nl,en"
 
 
 air

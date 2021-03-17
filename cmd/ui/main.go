@@ -39,20 +39,22 @@ type V struct {
 }
 
 type configuration struct {
-	AdminUser     string `default:"unknown"`
-	UserHeader    string `default:""`
-	AllowAllusers bool   `default:"true"`
-	BookDir       string `default:"."`
-	ImportDir     string `default:"./import"`
-	FailDir       string `default:"./failed"`
-	DatabaseDir   string `default:"./db/"`
-	LogLevel      string `default:"info"`
-	BindAddress   string `default:":7132"`
-	Timezone      string `default:"Europe/Amsterdam"`
-	MQTTEnabled   bool   `default:"false"`
-	MQTTTopic     string `default:"events"`
-	MQTTHost      string `default:"tcp://localhost:1883"`
-	MQTTClientID  string `default:"booksing"`
+	AdminUser         string   `default:"unknown"`
+	UserHeader        string   `default:""`
+	AllowAllusers     bool     `default:"true"`
+	BookDir           string   `default:"."`
+	ImportDir         string   `default:"./import"`
+	FailDir           string   `default:"./failed"`
+	DatabaseDir       string   `default:"./db/"`
+	LogLevel          string   `default:"info"`
+	BindAddress       string   `default:":7132"`
+	Timezone          string   `default:"Europe/Amsterdam"`
+	MQTTEnabled       bool     `default:"false"`
+	MQTTTopic         string   `default:"events"`
+	MQTTHost          string   `default:"tcp://localhost:1883"`
+	MQTTClientID      string   `default:"booksing"`
+	AcceptedLanguages []string `default:""`
+	MaxSize           int64    `default:"30000000"`
 }
 
 func main() {
@@ -193,4 +195,29 @@ func main() {
 func (app *booksingApp) IsUserAdmin(c *gin.Context) bool {
 
 	return true
+}
+
+func (app *booksingApp) keepBook(b *booksing.Book) bool {
+	if b == nil {
+		return false
+	}
+
+	if b.Size > app.cfg.MaxSize {
+		return false
+	}
+
+	if len(app.cfg.AcceptedLanguages) > 0 {
+		return contains(app.cfg.AcceptedLanguages, b.Language)
+	}
+
+	return true
+}
+
+func contains(haystack []string, needle string) bool {
+	for _, s := range haystack {
+		if strings.EqualFold(s, needle) {
+			return true
+		}
+	}
+	return false
 }

@@ -185,6 +185,13 @@ func (app *booksingApp) refresh() {
 			}
 			continue
 		}
+		if !app.keepBook(book) {
+			app.moveBookToFailed(book.Path)
+			if processed == toProcess {
+				close(bookQ)
+			}
+			continue
+		}
 		books = append(books, *book)
 		counter++
 		if len(books) == 50 || processed == toProcess {
