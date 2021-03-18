@@ -6,7 +6,7 @@ import (
 	"html/template"
 	"net/http"
 	"os"
-	"path"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -26,6 +26,7 @@ var templateFiles embed.FS
 
 // V is the holder struct for all possible template values
 type V struct {
+	HasMobi    bool
 	Results    int64
 	Error      error
 	Books      []booksing.Book
@@ -41,6 +42,7 @@ type V struct {
 	Limit      int64
 	Offset     int64
 	Indexing   bool
+	CanConvert bool
 }
 
 type configuration struct {
@@ -68,9 +70,6 @@ func main() {
 	logLevel, err := log.ParseLevel(cfg.LogLevel)
 	if err == nil {
 		log.SetLevel(logLevel)
-	}
-	if cfg.ImportDir == "" {
-		cfg.ImportDir = path.Join(cfg.BookDir, "import")
 	}
 
 	var db database
@@ -105,6 +104,12 @@ func main() {
 		cfg:       cfg,
 	}
 
+	//Check if ebook-convert is present so we can provide additional functionality
+	_, err = exec.LookPath("ebook-convert")
+	if err == nil {
+		app.canConvert = true
+	}
+
 	if cfg.ImportDir != "" {
 		go app.refreshLoop()
 	}
@@ -136,6 +141,7 @@ func main() {
 	{
 		auth.GET("/", app.search)
 		auth.GET("/detail/:hash", app.detailPage)
+		auth.POST("/convert/:hash", app.convert)
 		auth.GET("/download", app.downloadBook)
 		auth.GET("/cover", app.cover)
 

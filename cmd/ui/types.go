@@ -9,8 +9,9 @@ import (
 
 // booksingApp holds all relevant global stuff for the booksing server
 type booksingApp struct {
-	db      database
-	bookDir string
+	db         database
+	canConvert bool
+	bookDir    string
 	//importDir is very important
 	importDir string
 	logger    *logrus.Entry

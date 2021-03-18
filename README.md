@@ -20,6 +20,7 @@ Download an appropriate release from the [release](https://github.com/gnur/books
 ## todo
 - make sure sqlite features work reliably
 - add some way to convert books if ebook-convert is present
+- fix goreleaser so it can build with sqlite for all platforms
 
 ## Requirements
 - none

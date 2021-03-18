@@ -41,7 +41,19 @@
                         Download: <a href="/download?hash={{$.Book.Hash}}&file={{.}}">{{. | filename}}</a><br>
                     {{end}}
                 {{end}}
+                {{if and (.CanConvert) (not (.HasMobi)) }}
+                Convert to: <br />
+                <form method=POST action="/convert/{{$.Book.Hash}}">
+                    <select>
+                        <option value="mobi">.mobi (voor kindle)</option>
+                    </select>
+                    <input type=submit value=convert>
+                </form>
+
+
+                {{end}}
                 {{if .IsAdmin}}
+                <hr>
                 <code>
                     {{.Book | json }}
                 </code>
