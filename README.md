@@ -2,7 +2,7 @@
 <img src="./gopher.png" width="350" alt="nerdy gopher">
 A tool to browse epubs.
 
-Heavily inspired by https://github.com/geek1011/BookBrowser/
+Kind of inspired by https://github.com/geek1011/BookBrowser/
 
 ## Installation
 Download an appropriate release from the [release](https://github.com/gnur/booksing/releases) page
@@ -13,13 +13,13 @@ Download an appropriate release from the [release](https://github.com/gnur/books
 - List view
 - "Responsive" web interface
 - Automatic deletion of duplicates and unparsable epubs
+- Automatic sorting of books based on Author
 - See what books have been downloaded
 - If you have an authenticating proxy booksing can determine the username from a header, and the admin user will be able to grant users access.
 
 ## todo
 - make sure sqlite features work reliably
 - add some way to convert books if ebook-convert is present
-- convert go go embed
 
 ## Requirements
 - none
@@ -34,21 +34,17 @@ Set the following env vars to configure booksing:
 | BOOKSING_ALLOWALLUSER | `true`                 | :x:                | This determines whether all users can login                                                                              |
 | BOOKSING_BATCHSIZE    | `50`                   | :x:                | The amount of books that will be stored in the databases at a time                                                       |
 | BOOKSING_BINDADDRESS  | `localhost:7132`       | :x:                | The bind address, if external access is needed this should be changed to `:7132`                                         |
-| BOOKSING_BOOKDIR      | `.`                    | :x:                | The directery where books are stored after importing                                                                     |
-| BOOKSING_DATABASEDIR  | `./db/`                | :x:                | The path to put the database files (bbolt based)                                                                         |
+| BOOKSING_BOOKDIR      | `.`                    | :x:                | The directory where books are stored after importing                                                                     |
+| BOOKSING_DATABASEDIR  | `./db/`                | :x:                | The path to put the database files (sqlite based)                                                                        |
 | BOOKSING_FAILDIR      | `./failed`             | :x:                | The directory where books are moved if the import fails                                                                  |
 | BOOKSING_IMPORTDIR    | `./import`             | :x:                | The directory where booksing will periodically look for books                                                            |
 | BOOKSING_LOGLEVEL     | `info`                 | :x:                | determines the loglevel, supported values: error, warning, info, debug                                                   |
-| BOOKSING_MQTTCLIENTID | `booksing`             | :x:                | Default client ID used in MQTT events                                                                                    |
-| BOOKSING_MQTTENABLE   | `false`                | :x:                | This determines if booksing will send out certain "events" on MQTT                                                       |
-| BOOKSING_MQTTHOST     | `tcp://localhost:1883` | :x:                | The host to send events to                                                                                               |
-| BOOKSING_MQTTTOPIC    | `events`               | :x:                | The topic prefix to push events to                                                                                       |
-| BOOKSING_SAVEINTERVAL | `10s`                  | :x:                | The time between saves if the batchsize is not reached yet                                                               |
 | BOOKSING_TIMEZONE     | `Europe/Amsterdam`     | :x:                | Timezone used for storing all time information                                                                           |
 | BOOKSING_USERHEADER   | `-`                    | :x:                | The header to take the username from (if behind cloudflare access, this should be: `Cf-Access-Authenticated-User-Email`) |
-| BOOKSING_WORKERS      | `5`                    | :x:                | Amount of parallel workers used for parsing epubs                                                                        |
 
 
+## Tips
+- For large collections, it is perfectly acceptable to place the ebooks themselves on an external USB drive, but you should place the database dir on a faster (preferable SSD) disk.
 
 ## Example first run
 

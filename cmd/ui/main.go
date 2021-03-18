@@ -1,9 +1,10 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"html/template"
-	"io/ioutil"
+	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -12,11 +13,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing"
 	"github.com/gnur/booksing/sqlite"
-	"github.com/markbates/pkger"
 
 	"github.com/kelseyhightower/envconfig"
 	log "github.com/sirupsen/logrus"
 )
+
+//go:embed static
+var staticFiles embed.FS
+
+//go:embed templates
+var templateFiles embed.FS
 
 // V is the holder struct for all possible template values
 type V struct {
@@ -83,25 +89,7 @@ func main() {
 
 	tpl := template.New("")
 	tpl.Funcs(templateFunctions)
-
-	err = pkger.Walk("/cmd/ui/templates", func(path string, info os.FileInfo, err error) error {
-		if strings.HasSuffix(path, ".html") {
-			log.WithField("path", path).Debug("loading template")
-			f, err := pkger.Open(path)
-			if err != nil {
-				return err
-			}
-			sl, err := ioutil.ReadAll(f)
-			if err != nil {
-				return err
-			}
-			_, err = tpl.Parse(string(sl))
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	tpl, err = tpl.ParseFS(templateFiles, "templates/*.html")
 	if err != nil {
 		log.WithField("err", err).Fatal("could not read templates")
 		return
@@ -129,7 +117,8 @@ func main() {
 	static := r.Group("/", func(c *gin.Context) {
 		c.Header("Cache-Control", "public, max-age=86400, immutable")
 	})
-	static.StaticFS("/static", pkger.Dir("/cmd/ui/static"))
+
+	static.StaticFS("/static", http.FS(staticFiles))
 
 	r.GET("/kill", func(c *gin.Context) {
 		app.logger.Fatal("Killing so I get restarted anew")
@@ -138,6 +127,7 @@ func main() {
 	r.GET("/status", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status": app.state,
+			"total":  app.db.GetBookCount(),
 		})
 	})
 
@@ -147,6 +137,7 @@ func main() {
 		auth.GET("/", app.search)
 		auth.GET("/detail/:hash", app.detailPage)
 		auth.GET("/download", app.downloadBook)
+		auth.GET("/cover", app.cover)
 
 	}
 
@@ -173,11 +164,6 @@ func main() {
 	if err != nil {
 		log.WithField("err", err).Fatal("unable to start running")
 	}
-}
-
-func (app *booksingApp) IsUserAdmin(c *gin.Context) bool {
-
-	return true
 }
 
 func (app *booksingApp) keepBook(b *booksing.Book) bool {

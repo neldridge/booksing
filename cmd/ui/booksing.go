@@ -7,6 +7,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -31,6 +32,14 @@ func (app *booksingApp) refreshLoop() {
 		app.refresh()
 		time.Sleep(time.Minute)
 	}
+}
+
+func (app *booksingApp) cover(c *gin.Context) {
+	c.Header("Cache-Control", "public, max-age=86400, immutable")
+
+	file := c.Query("file")
+
+	c.File(file)
 }
 
 func (app *booksingApp) downloadBook(c *gin.Context) {
@@ -139,11 +148,10 @@ func (app *booksingApp) refresh() {
 	ctx := context.TODO()
 	toProcess := len(matches)
 	bookQ := make(chan *booksing.Book)
+	sem := semaphore.NewWeighted(int64(runtime.GOMAXPROCS(0)))
 
 	for _, filename := range matches {
 		app.logger.WithField("f", filename).Debug("parsing book")
-
-		sem := semaphore.NewWeighted(int64(runtime.GOMAXPROCS(0)))
 
 		go func(f string) {
 			if err := sem.Acquire(ctx, 1); err != nil {
@@ -201,7 +209,7 @@ func (app *booksingApp) refresh() {
 			app.logger.WithFields(logrus.Fields{
 				"reason": "bulk insert failed",
 				"err":    err,
-			}).Info("Moving book to failed")
+			}).Info("bulk insert failed")
 		}
 	}
 
@@ -219,15 +227,24 @@ func (app *booksingApp) moveBookToFailed(bookpath string) {
 		app.logger.WithError(err).Error("unable to create fail dir")
 		return
 	}
-	filename := path.Base(bookpath)
-	newBookPath := path.Join(app.cfg.FailDir, filename)
-	err = os.Rename(bookpath, newBookPath)
+	globPath := strings.Replace(bookpath, ".epub", ".*", 1)
+	app.logger.WithField("path", globPath).Debug("Searching here for other formats")
+	files, err := zglob.Glob(globPath)
 	if err != nil {
-		app.logger.WithFields(logrus.Fields{
-			"faildir": app.cfg.FailDir,
-			"book":    bookpath,
-		}).WithError(err).Error("unable to move book to faildir")
+		app.logger.WithError(err).Error("failed to glob relavent files")
 		return
+	}
+
+	for _, f := range files {
+		filename := path.Base(f)
+		newBookPath := path.Join(app.cfg.FailDir, filename)
+		err = os.Rename(bookpath, newBookPath)
+		if err != nil {
+			app.logger.WithFields(logrus.Fields{
+				"faildir": app.cfg.FailDir,
+				"book":    bookpath,
+			}).WithError(err).Error("unable to move book to faildir")
+		}
 	}
 }
 

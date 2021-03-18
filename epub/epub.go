@@ -48,6 +48,7 @@ func ParseFile(bookpath string) (bk *Epub, cover []byte, err error) {
 	if err != nil {
 		return
 	}
+	defer zr.Close()
 
 	zfs := zipfs.New(zr, "epub")
 

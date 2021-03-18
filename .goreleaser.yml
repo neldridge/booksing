@@ -3,8 +3,6 @@
 before:
   hooks:
     - go mod download
-    - go get github.com/markbates/pkger/cmd/pkger
-    - pkger
 builds:
   - env:
       - CGO_ENABLED=0
