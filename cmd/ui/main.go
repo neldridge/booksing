@@ -57,7 +57,7 @@ type configuration struct {
 	BindAddress       string   `default:":7132"`
 	Timezone          string   `default:"Europe/Amsterdam"`
 	AcceptedLanguages []string `default:""`
-	MaxSize           int64    `default:"30000000"`
+	MaxSize           int64    `default:"0"`
 }
 
 func main() {
@@ -177,7 +177,7 @@ func (app *booksingApp) keepBook(b *booksing.Book) bool {
 		return false
 	}
 
-	if b.Size > app.cfg.MaxSize {
+	if app.cfg.MaxSize > 0 && b.Size > app.cfg.MaxSize {
 		return false
 	}
 

@@ -52,6 +52,11 @@
 
 
                 {{end}}
+                <hr>
+                Other books from <a href="/?q=author:{{.Book.Author}}">{{.Book.Author}}</a><br>
+                {{if ne .Book.Series ""}}
+                More from <a href="/?q=series:{{.Book.Series}}">{{.Book.Series}}</a><br>
+                {{end}}
                 {{if .IsAdmin}}
                 <hr>
                 <code>

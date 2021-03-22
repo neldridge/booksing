@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gnur/booksing"
 	"gorm.io/driver/sqlite"
@@ -153,6 +154,42 @@ func (db *liteDB) GetBooks(q string, limit, offset int64) (*booksing.SearchResul
 
 	if q == "" {
 		return db.recentBooks()
+	}
+
+	//check if it is bql
+	if strings.Contains(q, ":") {
+		queryMap := make(map[string]string)
+		terms := strings.Split(q, ",")
+		for _, term := range terms {
+			parts := strings.Split(term, ":")
+			if len(parts) != 2 {
+				continue
+			}
+			field := strings.ToLower(strings.TrimSpace(parts[0]))
+			value := strings.TrimSpace(parts[1])
+			if field == "author" {
+				value = booksing.Fix(value, true, true)
+			} else if field == "title" {
+				value = booksing.Fix(value, true, false)
+			}
+
+			queryMap[field] = value
+		}
+
+		tx := db.db.Where(queryMap).Order("author").Order("title").Offset(int(offset)).Limit(int(limit)).Find(&books)
+		if tx.Error != nil {
+			return nil, tx.Error
+		}
+		var count int64
+		tx = db.db.Model(&booksing.Book{}).Where(queryMap).Count(&count)
+		if tx.Error != nil {
+			return nil, tx.Error
+		}
+		return &booksing.SearchResult{
+			Items: books,
+			Total: count,
+		}, nil
+
 	}
 
 	tx := db.db.Raw("SELECT hash FROM search WHERE search MATCH ? LIMIT ?,?", q, offset, limit).Scan(&books)
