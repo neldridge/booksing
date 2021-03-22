@@ -15,6 +15,7 @@
                         <th scope="col">IsAllowed</th>
                         <th scope="col">Created</th>
                         <th scope="col">LastSeen</th>
+                        <th scope="col">Downloads</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -45,6 +46,7 @@
                             <a href="#" data-toggle="tooltip"
                                 title="{{.LastSeen | prettyTime}}">{{.LastSeen | relativeTime}}</a>
                         </td>
+                        <td>{{.Downloads}}</td>
                     </tr>
                     {{end}}
                 </tbody>

@@ -14,7 +14,7 @@ var ErrDuplicate = errors.New("Duplicate key")
 type Download struct {
 	gorm.Model
 	Book      string    `json:"hash"`
-	User      string    `json:"user"`
+	User      string    `json:"user" gorm:"index"`
 	IP        string    `json:"ip"`
 	Timestamp time.Time `json:"timestamp"`
 }

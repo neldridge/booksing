@@ -12,6 +12,7 @@ type User struct {
 	Name      string `gorm:"uniqueIndex"`
 	IsAdmin   bool
 	IsAllowed bool
+	Downloads int64
 	Created   time.Time
 	LastSeen  time.Time
 }

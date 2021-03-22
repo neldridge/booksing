@@ -78,9 +78,38 @@ func (db *liteDB) GetDownloads(limit int) ([]download, error) {
 	return dls, tx.Error
 }
 
+func (db *liteDB) getDownloadsCountByUser() (map[string]int64, error) {
+	var result []struct {
+		User  string
+		Count int64
+	}
+	tx := db.db.Raw("select count(1) as count, user from downloads group by user;").Scan(&result)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	counts := make(map[string]int64)
+
+	for _, row := range result {
+		counts[row.User] = row.Count
+	}
+	return counts, nil
+}
+
 func (db *liteDB) GetUsers() ([]booksing.User, error) {
 	var users []booksing.User
 	tx := db.db.Find(&users)
+	counts, err := db.getDownloadsCountByUser()
+	if err != nil {
+		return nil, err
+	}
+	for i, u := range users {
+		c, ok := counts[u.Name]
+		if ok {
+			users[i].Downloads = c
+		}
+
+	}
 	return users, tx.Error
 }
 
