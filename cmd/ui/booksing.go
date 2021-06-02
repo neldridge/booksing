@@ -39,6 +39,7 @@ func (app *booksingApp) cover(c *gin.Context) {
 
 	file := c.Query("file")
 
+	//TODO: fix this, this is highly dangerous
 	c.File(file)
 }
 
