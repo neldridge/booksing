@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gnur/booksing"
 	zglob "github.com/mattn/go-zglob"
 	"github.com/sirupsen/logrus"
 )
@@ -38,13 +39,25 @@ func (app *booksingApp) search(c *gin.Context) {
 		}
 	}
 
-	books, err := app.db.GetBooks(q, limit, offset)
-	if err != nil {
-		c.HTML(500, "error.html", V{
-			Error: err,
-			Q:     q,
-		})
-		return
+	var books *booksing.SearchResult
+
+	if q == "" && app.recentCache != nil {
+		//return books from cache
+		books = app.recentCache
+		app.logger.Warning("Serving from cache")
+
+	} else {
+		books, err = app.db.GetBooks(q, limit, offset)
+		if err != nil {
+			c.HTML(500, "error.html", V{
+				Error: err,
+				Q:     q,
+			})
+			return
+		}
+		if q == "" {
+			app.recentCache = books
+		}
 	}
 
 	stop := time.Since(start)

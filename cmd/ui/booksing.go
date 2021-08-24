@@ -215,6 +215,7 @@ func (app *booksingApp) refresh() {
 	}
 
 	app.logger.Info("Done with refresh")
+	app.recentCache = nil
 
 	//move none epub files to failed dir
 

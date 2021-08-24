@@ -13,12 +13,13 @@ type booksingApp struct {
 	canConvert bool
 	bookDir    string
 	//importDir is very important
-	importDir string
-	logger    *logrus.Entry
-	timezone  *time.Location
-	adminUser string
-	cfg       configuration
-	state     string
+	importDir   string
+	logger      *logrus.Entry
+	timezone    *time.Location
+	adminUser   string
+	cfg         configuration
+	state       string
+	recentCache *booksing.SearchResult
 }
 
 type database interface {
