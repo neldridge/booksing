@@ -7,9 +7,9 @@ import (
 	"gorm.io/gorm"
 )
 
-var ErrNonUniqueResult = errors.New("Query gave more then 1 result")
-var ErrNotFound = errors.New("Query no results")
-var ErrDuplicate = errors.New("Duplicate key")
+var ErrNonUniqueResult = errors.New("query gave more then 1 result")
+var ErrNotFound = errors.New("query no results")
+var ErrDuplicate = errors.New("duplicate key")
 
 type Download struct {
 	gorm.Model
