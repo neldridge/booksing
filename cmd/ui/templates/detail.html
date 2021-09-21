@@ -37,7 +37,7 @@
                 </p>
                 {{ $hash := .Book.Hash }}
                 {{range .ExtraPaths}}
-                    {{if ne . $.Book.CoverPath}}
+                    {{if not (hasSuffix $.Book.CoverPath ".jpg")}}
                         Download: <a href="/download?hash={{$.Book.Hash}}&file={{.}}">{{. | filename}}</a><br>
                     {{end}}
                 {{end}}
@@ -45,7 +45,7 @@
                 Convert to: <br />
                 <form method=POST action="/convert/{{$.Book.Hash}}">
                     <select>
-                        <option value="mobi">.mobi (voor kindle)</option>
+                        <option value="mobi">.mobi (for kindle)</option>
                     </select>
                     <input type=submit value=convert>
                 </form>

@@ -25,6 +25,9 @@ var templateFunctions = template.FuncMap{
 		}
 		return s
 	},
+	"hasSuffix": func(s, suffix string) bool {
+		return strings.HasSuffix(s, suffix)
+	},
 	"filename": func(f string) string {
 		return path.Base(f)
 	},

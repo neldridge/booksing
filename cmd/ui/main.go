@@ -50,7 +50,7 @@ type configuration struct {
 	AdminUser         string   `default:"unknown"`
 	AllowAllusers     bool     `default:"true"`
 	BindAddress       string   `default:":7132"`
-	BookDir           string   `default:"."`
+	BookDir           string   `default:"./books/"`
 	DatabaseDir       string   `default:"./db/"`
 	FailDir           string   `default:"./failed"`
 	ImportDir         string   `default:"./import"`
