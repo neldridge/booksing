@@ -33,5 +33,6 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
-extra_files:
-  - glob: ./includes/*
+release:
+  extra_files:
+    - glob: ./includes/*
