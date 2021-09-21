@@ -2,7 +2,7 @@
 <nav class="navbar navbar-light bg-light navbar-expand-lg">
     <div class="container-fluid">
         <a class="navbar-brand" href="/">
-            <img src="/static/booksing.svg" width="30" height="30" class="d-inline-block align-top" alt=""
+            <img src="/static/static/booksing.svg" width="30" height="30" class="d-inline-block align-top" alt=""
                 loading="lazy">
             Booksing</a>
         <ul class="navbar-nav">
@@ -18,27 +18,26 @@
             <li class="nav-item">
                 <a class="nav-link" href="/admin/downloads">downloads</a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/admin/stats">stats</a>
-            </li>
             {{end}}
-            <li class="nav-item">
-                <a class="nav-link" href="/bookmarks">bookmarks</a>
-            </li>
         </ul>
         <span class="navbar-text">
             Index contains {{.TotalBooks}} books
         </span>
-        {{if gt .TimeTaken  0}}
+        {{if gt .TimeTaken 0}}
         <span class="navbar-text">
             Found {{.Results}} book{{if ne .Results 1}}s{{end}} in {{.TimeTaken}}ms
         </span>
         {{end}}
 
-        <form class="d-flex" action="/" method="GET">
+        <form class="d-flex" action="/" method="GET" id="submitform">
             <input class="form-control mr-2" name="q" type="search" placeholder="Search" aria-label="Search"
                 value="{{.Q}}">
-            <button class="btn btn-outline-success" type="submit">Search</button>
+            <button class="btn btn-primary" id="searchbutton" type="submit">
+                <span class="spinner-grow spinner-grow-sm d-none" id="searchspinner" role="status"
+                    aria-hidden="true"></span>
+                <span id="searchtext">search</span>
+            </button>
+
         </form>
     </div>
 </nav>

@@ -5,7 +5,8 @@
     {{template "nav.html" .}}
 
     <div class="container">
-        <table class="table table-responsive align-middle table-striped">
+        <div class="table-responsive">
+        <table class="table align-middle table-striped">
             <thead>
                 <tr>
                     <th scope="col">User</th>
@@ -18,10 +19,10 @@
                 {{range .Downloads}}
                 <tr>
                     <td>{{.User}}</td>
-                    <td>{{.Book}}</td>
+                    <td> <a href="/detail/{{.Book}}">{{.Book}}</a> </td>
                     <td>
-                        <a href="#" data-toggle="tooltip"
-                            title="{{.Timestamp | prettyTime}}">{{.Timestamp | relativeTime}}</a>
+                        <a href="#" data-toggle="tooltip" title="{{.Timestamp | prettyTime}}">
+                            {{.Timestamp | relativeTime}}</a>
                     </td>
                     <td>{{.IP}}</td>
                 </tr>
@@ -29,6 +30,7 @@
             </tbody>
         </table>
 
+    </div>
     </div>
 </body>
 

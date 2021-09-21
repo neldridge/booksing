@@ -1,7 +1,9 @@
 package booksing
 
 import (
+	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/gnur/booksing/epub"
 	"github.com/kennygrant/sanitize"
+	"gorm.io/gorm"
 )
 
 var yearRemove = regexp.MustCompile(`\((1|2)[0-9]{3}\)`)
@@ -20,20 +23,31 @@ var filenameSafe = regexp.MustCompile("[^a-zA-Z0-9 -]+")
 
 type StorageLocation string
 
+var ErrFileAlreadyExists = errors.New("Target file already exists")
+var ErrCoverWriteFailed = errors.New("Failed to write cover")
+
 const (
 	FileStorage StorageLocation = "FILE"
 )
 
 // Book represents a book record in the database, regular "book" data with extra metadata
 type Book struct {
-	Hash        string `storm:"id"`
+	gorm.Model
+	Hash        string `gorm:"uniqueIndex"`
 	Title       string
-	Author      string
-	Language    string
+	Author      string `gorm:"index"`
+	Language    string `gorm:"index"`
 	Description string
-	Added       time.Time `storm:"index"`
+	Added       time.Time `gorm:"index"`
 	Path        string
-	Icon        ShelveIcon
+	Size        int64 `gorm:"index"`
+	HasCover    bool
+	CoverPath   string
+	Publisher   string
+	ISBN        string
+	Series      string `gorm:"index"`
+	PublishDate time.Time
+	SeriesIndex float64
 }
 
 type BookInput struct {
@@ -64,8 +78,9 @@ type FileLocation struct {
 
 // NewBookFromFile creates a book object from a file
 func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
-	epub, err := epub.ParseFile(bookpath)
+	epub, cover, err := epub.ParseFile(bookpath)
 	if err != nil {
+		fmt.Println(cover)
 		return nil, err
 	}
 
@@ -74,6 +89,12 @@ func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
 		Author:      epub.Author,
 		Language:    epub.Language,
 		Description: epub.Description,
+		HasCover:    epub.HasCover,
+		Publisher:   epub.Publisher,
+		ISBN:        epub.ISBN,
+		Series:      epub.Series,
+		PublishDate: epub.PublishDate,
+		SeriesIndex: epub.SeriesIndex,
 	}
 
 	f, err := os.Open(bookpath)
@@ -89,6 +110,7 @@ func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
 		return nil, err
 	}
 	book.Added = fi.ModTime()
+	book.Size = fi.Size()
 
 	book.Title = Fix(book.Title, true, false)
 	book.Author = Fix(book.Author, true, true)
@@ -98,6 +120,9 @@ func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
 	book.Hash = HashBook(book.Author, book.Title)
 
 	newBookPath := path.Join(baseDir, GetBookPath(book.Title, book.Author)+".epub")
+	if _, err := os.Stat(newBookPath); err == nil {
+		return &book, ErrFileAlreadyExists
+	}
 	baseDir = filepath.Dir(newBookPath)
 	err = os.MkdirAll(baseDir, 0755)
 	if err == nil {
@@ -105,6 +130,13 @@ func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
 		fp = newBookPath
 	}
 	book.Path = fp
+	if book.HasCover {
+		book.CoverPath = strings.Replace(fp, ".epub", ".jpg", 1)
+		err = ioutil.WriteFile(book.CoverPath, cover, 0644)
+		if err != nil {
+			return &book, ErrCoverWriteFailed
+		}
+	}
 
 	return &book, nil
 }

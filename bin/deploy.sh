@@ -4,11 +4,8 @@ function log {
     echo "> $(date +%T) $*"
 }
 
-log "binpacking static assets"
-pkger
-
 log "Building binary"
-GOOS=linux GOARCH=amd64 go build -o booksing ./cmd/ui
+GOOS=linux GOARCH=amd64 go build -tags 'fts5' -o booksing ./cmd/ui
 
 
 log "copying to sanny"

@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"html/template"
 	"net/url"
+	"path"
 	"reflect"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -22,6 +24,31 @@ var templateFunctions = template.FuncMap{
 			return s[0:(i-2)] + "..."
 		}
 		return s
+	},
+	"hasSuffix": func(s, suffix string) bool {
+		return strings.HasSuffix(s, suffix)
+	},
+	"filename": func(f string) string {
+		return path.Base(f)
+	},
+	"filesize": func(b int64) string {
+		if b == 0 {
+			return "unknown"
+		}
+		const unit = 1024
+		if b < unit {
+			return fmt.Sprintf("%d B", b)
+		}
+		div, exp := int64(unit), 0
+		for n := b / unit; n >= unit; n /= unit {
+			div *= unit
+			exp++
+		}
+		return fmt.Sprintf("%.1f %ciB",
+			float64(b)/float64(div), "KMGTPE"[exp])
+	},
+	"nl2br": func(str string) template.HTML {
+		return template.HTML(strings.Replace(str, "\n", "<br />", -1))
 	},
 	"add": func(b, a interface{}) (interface{}, error) {
 		av := reflect.ValueOf(a)
@@ -152,7 +179,7 @@ var templateFunctions = template.FuncMap{
 	},
 	"json": func(s interface{}) template.HTML {
 		json, _ := json.MarshalIndent(s, "", "  ")
-		return template.HTML(string(json))
+		return template.HTML(strings.Replace(string(json), "\n", "<br />", -1))
 	},
 	"relativeTime": func(s interface{}) template.HTML {
 		t, ok := s.(time.Time)

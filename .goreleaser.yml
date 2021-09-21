@@ -3,12 +3,8 @@
 before:
   hooks:
     - go mod download
-    - go get github.com/markbates/pkger/cmd/pkger
-    - pkger
 builds:
-  - env:
-      - CGO_ENABLED=0
-    goos:
+  - goos:
       - linux
       - windows
       - darwin
@@ -17,6 +13,8 @@ builds:
       - arm
       - arm64
     dir: cmd/ui
+    tags:
+      - fts5
 archives:
   - replacements:
       darwin: macOS
@@ -33,3 +31,6 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
+release:
+  extra_files:
+    - glob: ./includes/*

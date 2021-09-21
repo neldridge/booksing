@@ -70,7 +70,6 @@ func (app *booksingApp) BearerTokenMiddleware() gin.HandlerFunc {
 				IsAllowed: username == app.adminUser || app.cfg.AllowAllusers,
 				Created:   time.Now(),
 				LastSeen:  time.Now(),
-				Bookmarks: make(map[string]booksing.Bookmark),
 			}
 			err = app.db.SaveUser(&user)
 			if err != nil {
@@ -106,9 +105,6 @@ func (app *booksingApp) BearerTokenMiddleware() gin.HandlerFunc {
 			})
 			c.Abort()
 			return
-		}
-		if user.Bookmarks == nil {
-			user.Bookmarks = make(map[string]booksing.Bookmark)
 		}
 
 		c.Set("id", &user)

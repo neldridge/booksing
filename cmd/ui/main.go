@@ -1,61 +1,63 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"html/template"
-	"io/ioutil"
+	"net/http"
 	"os"
-	"path"
+	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing"
-	"github.com/gnur/booksing/storm"
-	"github.com/markbates/pkger"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/gnur/booksing/sqlite"
 
 	"github.com/kelseyhightower/envconfig"
 	log "github.com/sirupsen/logrus"
 )
 
+//go:embed static
+var staticFiles embed.FS
+
+//go:embed templates
+var templateFiles embed.FS
+
 // V is the holder struct for all possible template values
 type V struct {
+	HasMobi    bool
 	Results    int64
 	Error      error
 	Books      []booksing.Book
 	Book       *booksing.Book
+	ExtraPaths []string
 	Users      []booksing.User
 	Downloads  []booksing.Download
 	Q          string
 	TimeTaken  int
-	Stats      []booksing.BookCount
 	IsAdmin    bool
 	Username   string
 	TotalBooks int
 	Limit      int64
 	Offset     int64
 	Indexing   bool
+	CanConvert bool
 }
 
 type configuration struct {
-	AdminUser     string `default:"unknown"`
-	UserHeader    string `default:""`
-	AllowAllusers bool   `default:"true"`
-	BookDir       string `default:"."`
-	ImportDir     string `default:"./import"`
-	FailDir       string `default:"./failed"`
-	DatabaseDir   string `default:"./db/"`
-	LogLevel      string `default:"info"`
-	BindAddress   string `default:":7132"`
-	Timezone      string `default:"Europe/Amsterdam"`
-	MQTTEnabled   bool   `default:"false"`
-	MQTTTopic     string `default:"events"`
-	MQTTHost      string `default:"tcp://localhost:1883"`
-	MQTTClientID  string `default:"booksing"`
-	BatchSize     int    `default:"50"`
-	Workers       int    `default:"5"`
-	SaveInterval  string `default:"10s"`
+	AcceptedLanguages []string `default:""`
+	AdminUser         string   `default:"unknown"`
+	AllowAllusers     bool     `default:"true"`
+	BindAddress       string   `default:":7132"`
+	BookDir           string   `default:"./books/"`
+	DatabaseDir       string   `default:"./db/"`
+	FailDir           string   `default:"./failed"`
+	ImportDir         string   `default:"./import"`
+	LogLevel          string   `default:"info"`
+	MaxSize           int64    `default:"0"`
+	Timezone          string   `default:"Europe/Amsterdam"`
+	UserHeader        string   `default:""`
 }
 
 func main() {
@@ -69,22 +71,15 @@ func main() {
 	if err == nil {
 		log.SetLevel(logLevel)
 	}
-	if cfg.ImportDir == "" {
-		cfg.ImportDir = path.Join(cfg.BookDir, "import")
-	}
 
 	var db database
 	log.WithField("dbpath", cfg.DatabaseDir).Debug("using this file")
-	db, err = storm.New(cfg.DatabaseDir)
+	db, err = sqlite.New(cfg.DatabaseDir)
+
 	if err != nil {
 		log.WithField("err", err).Fatal("could not create fileDB")
 	}
 	defer db.Close()
-
-	interval, err := time.ParseDuration(cfg.SaveInterval)
-	if err != nil {
-		interval = 10 * time.Second
-	}
 
 	tz, err := time.LoadLocation(cfg.Timezone)
 	if err != nil {
@@ -93,60 +88,30 @@ func main() {
 
 	tpl := template.New("")
 	tpl.Funcs(templateFunctions)
-
-	err = pkger.Walk("/cmd/ui/templates", func(path string, info os.FileInfo, err error) error {
-		if strings.HasSuffix(path, ".html") {
-			log.WithField("path", path).Debug("loading template")
-			f, err := pkger.Open(path)
-			if err != nil {
-				return err
-			}
-			sl, err := ioutil.ReadAll(f)
-			if err != nil {
-				return err
-			}
-			_, err = tpl.Parse(string(sl))
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	tpl, err = tpl.ParseFS(templateFiles, "templates/*.html")
 	if err != nil {
 		log.WithField("err", err).Fatal("could not read templates")
 		return
 	}
 
 	app := booksingApp{
-		db:           db,
-		bookDir:      cfg.BookDir,
-		importDir:    cfg.ImportDir,
-		timezone:     tz,
-		adminUser:    cfg.AdminUser,
-		logger:       log.WithField("app", "booksing"),
-		cfg:          cfg,
-		bookQ:        make(chan string),
-		resultQ:      make(chan parseResult),
-		searchQ:      make(chan booksing.Book),
-		saveInterval: interval,
+		db:        db,
+		bookDir:   cfg.BookDir,
+		importDir: cfg.ImportDir,
+		timezone:  tz,
+		adminUser: cfg.AdminUser,
+		logger:    log.WithField("app", "booksing"),
+		cfg:       cfg,
 	}
 
-	if app.cfg.MQTTEnabled {
-		mqttClient, err := newMQTTClient(cfg.MQTTHost, cfg.MQTTClientID)
-		if err != nil {
-			log.WithField("err", err).Fatal("Unable to connect to mqtt")
-			return
-		}
-		app.mqttClient = mqttClient
+	//Check if ebook-convert is present so we can provide additional functionality
+	_, err = exec.LookPath("ebook-convert")
+	if err == nil {
+		app.canConvert = true
 	}
 
 	if cfg.ImportDir != "" {
 		go app.refreshLoop()
-		for w := 0; w < 5; w++ { //not sure yet how concurrent-proof my solution is
-			go app.bookParser()
-		}
-		go app.resultParser()
-		go app.searchUpdater()
 	}
 
 	gin.SetMode(gin.ReleaseMode)
@@ -157,9 +122,8 @@ func main() {
 	static := r.Group("/", func(c *gin.Context) {
 		c.Header("Cache-Control", "public, max-age=86400, immutable")
 	})
-	static.StaticFS("/static", pkger.Dir("/cmd/ui/static"))
 
-	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	static.StaticFS("/static", http.FS(staticFiles))
 
 	r.GET("/kill", func(c *gin.Context) {
 		app.logger.Fatal("Killing so I get restarted anew")
@@ -168,6 +132,7 @@ func main() {
 	r.GET("/status", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status": app.state,
+			"total":  app.db.GetBookCount(),
 		})
 	})
 
@@ -175,11 +140,10 @@ func main() {
 	auth.Use(app.BearerTokenMiddleware())
 	{
 		auth.GET("/", app.search)
-		auth.GET("/bookmarks", app.bookmarks)
-		auth.GET("/rotateShelve/:hash", app.rotateIcon)
-		auth.POST("/rotateShelve/:hash", app.rotateIcon)
+		auth.GET("/detail/:hash", app.detailPage)
+		auth.POST("/convert/:hash", app.convert)
 		auth.GET("/download", app.downloadBook)
-		auth.GET("/icons/:hash", app.serveIcon)
+		auth.GET("/cover", app.cover)
 
 	}
 
@@ -187,7 +151,6 @@ func main() {
 	admin.Use(gin.Recovery(), app.BearerTokenMiddleware(), app.mustBeAdmin())
 	{
 		admin.GET("/users", app.showUsers)
-		admin.GET("/stats", app.showStats)
 		admin.GET("/downloads", app.showDownloads)
 		admin.POST("/delete/:hash", app.deleteBook)
 		admin.POST("user/:username", app.updateUser)
@@ -209,7 +172,27 @@ func main() {
 	}
 }
 
-func (app *booksingApp) IsUserAdmin(c *gin.Context) bool {
+func (app *booksingApp) keepBook(b *booksing.Book) bool {
+	if b == nil {
+		return false
+	}
+
+	if app.cfg.MaxSize > 0 && b.Size > app.cfg.MaxSize {
+		return false
+	}
+
+	if len(app.cfg.AcceptedLanguages) > 0 {
+		return contains(app.cfg.AcceptedLanguages, b.Language)
+	}
 
 	return true
+}
+
+func contains(haystack []string, needle string) bool {
+	for _, s := range haystack {
+		if strings.EqualFold(s, needle) {
+			return true
+		}
+	}
+	return false
 }
