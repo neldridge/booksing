@@ -37,9 +37,13 @@ func (app *booksingApp) refreshLoop() {
 func (app *booksingApp) cover(c *gin.Context) {
 	c.Header("Cache-Control", "public, max-age=86400, immutable")
 
-	file := c.Query("file")
+	//join the path with a slash to make sure it is an absolute path
+	//and the Join will also automatically clean out any path traversal characters
+	file := path.Join("/", c.Query("file"))
 
-	//TODO: fix this, this is highly dangerous
+	//join only with the bookDir after the first join so only files from the bookdir are served
+	file = path.Join(app.bookDir, file)
+
 	c.File(file)
 }
 

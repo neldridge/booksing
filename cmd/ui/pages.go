@@ -188,6 +188,7 @@ func (app *booksingApp) detailPage(c *gin.Context) {
 			break
 		}
 	}
+	b.CoverPath = strings.TrimPrefix(b.CoverPath, app.bookDir)
 
 	c.HTML(200, "detail.html", V{
 		Results:    0,

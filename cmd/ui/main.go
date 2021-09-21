@@ -46,18 +46,18 @@ type V struct {
 }
 
 type configuration struct {
-	AdminUser         string   `default:"unknown"`
-	UserHeader        string   `default:""`
-	AllowAllusers     bool     `default:"true"`
-	BookDir           string   `default:"."`
-	ImportDir         string   `default:"./import"`
-	FailDir           string   `default:"./failed"`
-	DatabaseDir       string   `default:"./db/"`
-	LogLevel          string   `default:"info"`
-	BindAddress       string   `default:":7132"`
-	Timezone          string   `default:"Europe/Amsterdam"`
 	AcceptedLanguages []string `default:""`
+	AdminUser         string   `default:"unknown"`
+	AllowAllusers     bool     `default:"true"`
+	BindAddress       string   `default:":7132"`
+	BookDir           string   `default:"."`
+	DatabaseDir       string   `default:"./db/"`
+	FailDir           string   `default:"./failed"`
+	ImportDir         string   `default:"./import"`
+	LogLevel          string   `default:"info"`
 	MaxSize           int64    `default:"0"`
+	Timezone          string   `default:"Europe/Amsterdam"`
+	UserHeader        string   `default:""`
 }
 
 func main() {
