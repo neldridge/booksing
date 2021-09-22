@@ -12,6 +12,9 @@ Download an appropriate release from the [release](https://github.com/gnur/books
 
 <img src="./screenshots/detail.png" width="900" alt="detail page">  
 
+## DISCLAIMER
+
+**_Please, please, please be careful. I'm pretty sure it shouldn't eat up your collection, but it might. If your are testing booksing, please copy your files into the import dir. Do not move them until you feel comfortable with booksing._**
 
 ## Features
 - Easy-to-use
