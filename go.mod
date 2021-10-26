@@ -29,13 +29,17 @@ require (
 
 require (
 	github.com/gin-contrib/sse v0.1.0 // indirect
+	github.com/gnur/slev v0.0.0-00010101000000-000000000000 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.2 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/ugorji/go/codec v1.2.6 // indirect
 )
+
+replace github.com/gnur/slev => ../slev
 
 go 1.17

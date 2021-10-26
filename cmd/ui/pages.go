@@ -213,6 +213,19 @@ func (app *booksingApp) convert(c *gin.Context) {
 		})
 		return
 	}
+	user := c.MustGet("id")
+	username := user.(*booksing.User).Name
+
+	ip := c.ClientIP()
+
+	_, err = app.slev.NewEvent("booksing", "booksing.convert", gin.H{
+		"user": username,
+		"ip":   ip,
+		"hash": hash,
+	})
+	if err != nil {
+		app.logger.WithField("err", err).Error("unable to store slev event")
+	}
 
 	cmd := exec.Command("ebook-convert", b.Path, strings.Replace(b.Path, ".epub", ".mobi", 1))
 	err = cmd.Run()

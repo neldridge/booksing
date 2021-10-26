@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/gnur/booksing"
+	"github.com/gnur/slev"
 	"github.com/sirupsen/logrus"
 )
 
@@ -12,6 +13,7 @@ type booksingApp struct {
 	db         database
 	canConvert bool
 	bookDir    string
+	slev       *slev.Slev
 	//importDir is very important
 	importDir   string
 	logger      *logrus.Entry

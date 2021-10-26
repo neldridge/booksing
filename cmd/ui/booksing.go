@@ -75,6 +75,15 @@ func (app *booksingApp) downloadBook(c *gin.Context) {
 		app.logger.WithField("err", err).Error("could not store download")
 	}
 
+	_, err = app.slev.NewEvent("booksing", "booksing.download", gin.H{
+		"user": username,
+		"ip":   ip,
+		"hash": hash,
+	})
+	if err != nil {
+		app.logger.WithField("err", err).Error("unable to store slev event")
+	}
+
 	if file != "" {
 		fName := path.Base(file)
 		c.Header("Content-Disposition",

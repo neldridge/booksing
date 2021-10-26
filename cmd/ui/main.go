@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gnur/booksing"
 	"github.com/gnur/booksing/sqlite"
+	"github.com/gnur/slev"
 
 	"github.com/kelseyhightower/envconfig"
 	log "github.com/sirupsen/logrus"
@@ -51,6 +52,7 @@ type configuration struct {
 	AllowAllusers     bool     `default:"true"`
 	BindAddress       string   `default:":7132"`
 	BookDir           string   `default:"./books/"`
+	EventsPort        string   `default:":8821"`
 	DatabaseDir       string   `default:"./db/"`
 	FailDir           string   `default:"./failed"`
 	ImportDir         string   `default:"./import"`
@@ -94,8 +96,15 @@ func main() {
 		return
 	}
 
+	sl, err := slev.Start(slev.UseDefaultHTTPServer(cfg.EventsPort))
+	if err != nil {
+		log.WithError(err).Fatal("Could not start slev")
+		return
+	}
+
 	app := booksingApp{
 		db:        db,
+		slev:      sl,
 		bookDir:   cfg.BookDir,
 		importDir: cfg.ImportDir,
 		timezone:  tz,
