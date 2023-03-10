@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -181,60 +180,15 @@ func (app *booksingApp) detailPage(c *gin.Context) {
 		return
 	}
 
-	hasMobi := false
-	for _, format := range books {
-		if strings.HasSuffix(format, ".mobi") {
-			hasMobi = true
-			break
-		}
-	}
 	b.CoverPath = strings.TrimPrefix(b.CoverPath, app.bookDir)
 
 	c.HTML(200, "detail.html", V{
 		Results:    0,
 		Book:       b,
 		ExtraPaths: books,
-		HasMobi:    hasMobi,
 		IsAdmin:    c.GetBool("isAdmin"),
 		TotalBooks: app.db.GetBookCount(),
 		Indexing:   app.state == "indexing",
-		CanConvert: app.canConvert,
 	})
 
-}
-
-func (app *booksingApp) convert(c *gin.Context) {
-	hash := c.Param("hash")
-
-	b, err := app.db.GetBook(hash)
-	if err != nil {
-		c.HTML(500, "error.html", V{
-			Error: err,
-		})
-		return
-	}
-	user := c.MustGet("id")
-	username := user.(*booksing.User).Name
-
-	ip := c.ClientIP()
-
-	_, err = app.slev.NewEvent("booksing", "booksing.convert", gin.H{
-		"user": username,
-		"ip":   ip,
-		"hash": hash,
-	})
-	if err != nil {
-		app.logger.WithField("err", err).Error("unable to store slev event")
-	}
-
-	cmd := exec.Command("ebook-convert", b.Path, strings.Replace(b.Path, ".epub", ".mobi", 1))
-	err = cmd.Run()
-	if err != nil {
-		c.HTML(500, "error.html", V{
-			Error: err,
-		})
-		return
-	}
-
-	c.Redirect(302, "/detail/"+hash)
 }

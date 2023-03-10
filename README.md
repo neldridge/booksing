@@ -24,10 +24,6 @@ Download an appropriate release from the [release](https://github.com/gnur/books
 - Automatic sorting of books based on Author
 - See what books have been downloaded
 - If you have an authenticating proxy booksing can determine the username from a header, and the admin user will be able to grant users access.
-- can convert .epub into .mobi for kindle reading
-
-## Requirements
-- (optional) calibre to enable .epub to .mobi conversion
 
 ## Configuration
 
