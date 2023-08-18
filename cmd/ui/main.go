@@ -156,7 +156,6 @@ func main() {
 		admin.POST("/adduser", app.addUser)
 	}
 
-	log.Info("booksing is now running")
 	port := os.Getenv("PORT")
 
 	if port == "" {
@@ -164,6 +163,7 @@ func main() {
 	} else {
 		port = fmt.Sprintf(":%s", port)
 	}
+	log.WithField("port", port).Info("booksing is now running")
 
 	err = r.Run(port)
 	if err != nil {

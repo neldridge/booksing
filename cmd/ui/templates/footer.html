@@ -4,15 +4,6 @@
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl)
     })
-    var f = document.querySelector('#submitform')
-    f.addEventListener("submit", (e) => {
-        e.preventDefault();
-        var sb = document.querySelector('#searchbutton')
-        sb.disabled = true;
-        document.querySelector("#searchspinner").classList.remove("d-none");
-        document.querySelector("#searchtext").classList.add("d-none");
-        f.submit();
-    });
 </script>
 
 </html>

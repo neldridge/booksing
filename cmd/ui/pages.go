@@ -61,7 +61,13 @@ func (app *booksingApp) search(c *gin.Context) {
 
 	stop := time.Since(start)
 	latency := int(math.Ceil(float64(stop.Nanoseconds()) / 1000000.0))
-	c.HTML(200, "search.html", V{
+
+	template := "search.html"
+	if c.Request.Header.Get("HX-Request") == "true" {
+		template = "searchresults"
+	}
+
+	c.HTML(200, template, V{
 		Limit:      limit,
 		Offset:     offset,
 		Results:    books.Total,
@@ -182,7 +188,12 @@ func (app *booksingApp) detailPage(c *gin.Context) {
 
 	b.CoverPath = strings.TrimPrefix(b.CoverPath, app.bookDir)
 
-	c.HTML(200, "detail.html", V{
+	template := "detail.html"
+	if c.Request.Header.Get("HX-Request") == "true" {
+		template = "bookdetail"
+	}
+
+	c.HTML(200, template, V{
 		Results:    0,
 		Book:       b,
 		ExtraPaths: books,
