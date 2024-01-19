@@ -60,6 +60,8 @@ type configuration struct {
 }
 
 func main() {
+	log.SetOutput(os.Stdout)
+
 	var cfg configuration
 	err := envconfig.Process("booksing", &cfg)
 	if err != nil {
