@@ -42,8 +42,15 @@ func (app *booksingApp) cover(c *gin.Context) {
 	file := path.Join("/", c.Query("file"))
 
 	//join only with the bookDir after the first join so only files from the bookdir are served
-	file = path.Join(app.bookDir, file)
-
+	// file = path.Join(app.bookDir, file)
+	// make sure file exists and is readable
+	if _, err := os.Stat(file); os.IsNotExist(err) {
+		app.logger.WithField("file", file).Debug("cover does not exist")
+		// serve 404
+		c.AbortWithStatus(404)
+		return
+	}
+	app.logger.WithField("file", file).Debug("serving cover")
 	c.File(file)
 }
 

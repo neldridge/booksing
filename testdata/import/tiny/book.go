@@ -3,13 +3,12 @@ package booksing
 import (
 	"fmt"
 	"os"
-	"path"
-	"path/filepath"
 	"regexp"
 	"time"
 
 	"strings"
 
+	"github.com/gnur/booksing"
 	"github.com/gnur/booksing/epub"
 	"github.com/kennygrant/sanitize"
 )
@@ -51,7 +50,7 @@ func (b *BookInput) ToBook() Book {
 	book.Description = b.Description
 	book.Path = b.Path
 
-	book.Hash = HashBook(book.Author, book.Title)
+	book.Hash = booksing.HashBook(book.Author, book.Title)
 
 	return book
 
@@ -63,10 +62,11 @@ type FileLocation struct {
 
 // NewBookFromFile creates a book object from a file
 func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
-	epub, err := epub.ParseFile(bookpath)
+	epub, cover, err := epub.ParseFile(bookpath)
 	if err != nil {
 		return nil, err
 	}
+	_ = cover
 
 	book := Book{
 		Title:       epub.Title,
@@ -80,8 +80,6 @@ func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
 		return nil, err
 	}
 
-	fp := bookpath
-
 	fi, err := f.Stat()
 	if err != nil {
 		f.Close()
@@ -94,16 +92,8 @@ func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
 	book.Language = FixLang(book.Language)
 	book.Description = sanitize.HTML(book.Description)
 
-	book.Hash = HashBook(book.Author, book.Title)
-
-	newBookPath := path.Join(baseDir, GetBookPath(book.Title, book.Author)+".epub")
-	baseDir = filepath.Dir(newBookPath)
-	err = os.MkdirAll(baseDir, 0755)
-	if err == nil {
-		os.Rename(bookpath, newBookPath)
-		fp = newBookPath
-	}
-	book.Path = fp
+	book.Hash = booksing.HashBook(book.Author, book.Title)
+	book.Path = bookpath
 
 	return &book, nil
 }

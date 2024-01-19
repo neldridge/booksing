@@ -3,10 +3,7 @@ package booksing
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path"
-	"path/filepath"
 	"regexp"
 	"time"
 
@@ -102,8 +99,6 @@ func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
 		return nil, err
 	}
 
-	fp := bookpath
-
 	fi, err := f.Stat()
 	if err != nil {
 		f.Close()
@@ -118,21 +113,11 @@ func NewBookFromFile(bookpath string, baseDir string) (bk *Book, err error) {
 	book.Description = sanitize.HTML(book.Description)
 
 	book.Hash = HashBook(book.Author, book.Title)
+	book.Path = bookpath
 
-	newBookPath := path.Join(baseDir, GetBookPath(book.Title, book.Author)+".epub")
-	if _, err := os.Stat(newBookPath); err == nil {
-		return &book, ErrFileAlreadyExists
-	}
-	baseDir = filepath.Dir(newBookPath)
-	err = os.MkdirAll(baseDir, 0755)
-	if err == nil {
-		_ = os.Rename(bookpath, newBookPath)
-		fp = newBookPath
-	}
-	book.Path = fp
 	if book.HasCover {
-		book.CoverPath = strings.Replace(fp, ".epub", ".jpg", 1)
-		err = ioutil.WriteFile(book.CoverPath, cover, 0644)
+		book.CoverPath = strings.Replace(bookpath, ".epub", ".jpg", 1)
+		err = os.WriteFile(book.CoverPath, cover, 0644)
 		if err != nil {
 			return &book, ErrCoverWriteFailed
 		}
